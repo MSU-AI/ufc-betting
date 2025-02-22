@@ -1,5 +1,6 @@
 import React from "react";
 import { OddsRow } from "./GameDetails";
+import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/components/ui/table";
 
 type OddsTableProps = {
   oddsData: OddsRow[];
@@ -8,28 +9,31 @@ type OddsTableProps = {
 const OddsTable: React.FC<OddsTableProps> = ({ oddsData }) => {
   return (
     <div className="mt-6 overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Book</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Moneyline</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Win Probability</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Edge</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Expected Value</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
+      <Table className="w-full text-sm text-gray-700">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="font-normal">Book</TableHead>
+            <TableHead className="font-normal">Moneyline</TableHead>
+            <TableHead className="font-normal">Win Probability</TableHead>
+            <TableHead className="font-normal">Edge</TableHead>
+            <TableHead className="font-normal">Expected Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {oddsData?.map((row, idx) => (
-            <tr key={idx} className="hover:bg-gray-50">
-              <td className="py-3 px-4">{row.book}</td>
-              <td className="py-3 px-4">{row.moneyline}</td>
-              <td className="py-3 px-4">{row.probability}</td>
-              <td className="py-3 px-4">{row.edge}</td>
-              <td className="py-3 px-4">{row.expectedValue}</td>
-            </tr>
+            <TableRow
+              key={idx}
+              className="border-b border-gray-200 last:border-0"
+            >
+              <TableCell className="py-2">{row.book}</TableCell>
+              <TableCell className="py-2">{row.moneyline}</TableCell>
+              <TableCell className="py-2">{row.probability}</TableCell>
+              <TableCell className="py-2">{row.edge}</TableCell>
+              <TableCell className="py-2">{row.expectedValue}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 };
