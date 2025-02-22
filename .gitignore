@@ -2,3 +2,5 @@
 *.venv
 *.sqlite
 *.env
+/betting-website/node_modules
+/betting-website/.next
