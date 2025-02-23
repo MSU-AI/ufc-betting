@@ -52,10 +52,9 @@ for team in NBATeam:
                 ),
             }
 
-            print("Scraped Data:", stats)
             # TODO: uncomment to insert into table
             result = collection.insert_one(stats)
-            print(f"Data inserted with ID: {result.inserted_id}")
+            # print(f"Data inserted with ID: {result.inserted_id}")
         else:
             print(
                 "Could not find the table with class 'stats_table sortable' and id 'per_game_stats'."

@@ -67,8 +67,6 @@ def update_scrape():
                             tfoot.find("td", {"data-stat": "pts_per_g"}).text.strip()
                         ),
                     }
-
-                    # print("Updated stats": stats)
                 else:
                     print(
                         "Could not find the table with class 'stats_table sortable' and id 'per_game_stats'."
@@ -89,10 +87,6 @@ def update_scrape():
             print("Doc updated succesfully")
         else:
             print(f"Doc not found")
-
-
-def printTest():
-    print("Sam")
 
 
 update_scrape()  # Run immediately
