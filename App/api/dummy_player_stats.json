@@ -1,0 +1,92 @@
+{
+  "data": [
+    {
+      "id": 14325883,
+      "min": "38",
+      "fgm": 10,
+      "fga": 16,
+      "fg_pct": 0.625,
+      "fg3m": 0,
+      "fg3a": 1,
+      "fg3_pct": 0.0,
+      "ftm": 11,
+      "fta": 22,
+      "ft_pct": 0.5,
+      "oreb": 3,
+      "dreb": 7,
+      "reb": 10,
+      "ast": 9,
+      "stl": 2,
+      "blk": 1,
+      "turnover": 5,
+      "pf": 1,
+      "pts": 31,
+      "player": {
+        "id": 16,
+        "first_name": "Lonzo",
+        "last_name": "Ball",
+        "position": "F",
+        "height": "6-11",
+        "weight": "243",
+        "jersey_number": "34",
+        "college": "Filathlitikos",
+        "country": "Greece",
+        "draft_year": 2013,
+        "draft_round": 1,
+        "draft_number": 15
+      },
+      "team": {
+        "id": 17,
+        "abbreviation": "MIL",
+        "city": "Milwaukee",
+        "name": "Bucks",
+        "full_name": "Milwaukee Bucks"
+      },
+      "season": 2024
+    },
+    {
+      "id": 14325883,
+      "min": "38",
+      "fgm": 10,
+      "fga": 16,
+      "fg_pct": 0.625,
+      "fg3m": 0,
+      "fg3a": 1,
+      "fg3_pct": 0.0,
+      "ftm": 11,
+      "fta": 22,
+      "ft_pct": 0.5,
+      "oreb": 3,
+      "dreb": 7,
+      "reb": 10,
+      "ast": 9,
+      "stl": 2,
+      "blk": 1,
+      "turnover": 5,
+      "pf": 1,
+      "pts": 31,
+      "player": {
+        "id": 7,
+        "first_name": "Rawle",
+        "last_name": "Akins",
+        "position": "F",
+        "height": "6-11",
+        "weight": "243",
+        "jersey_number": "34",
+        "college": "Filathlitikos",
+        "country": "Greece",
+        "draft_year": 2013,
+        "draft_round": 1,
+        "draft_number": 15
+      },
+      "team": {
+        "id": 17,
+        "abbreviation": "MIL",
+        "city": "Milwaukee",
+        "name": "Bucks",
+        "full_name": "Milwaukee Bucks"
+      },
+      "season": 2024
+    }
+  ]
+}
