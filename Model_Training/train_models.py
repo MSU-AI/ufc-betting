@@ -9,6 +9,7 @@ import xgboost as xgb
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 from feature_engineering import engineer_features
+import joblib
 
 def load_data(filepath):
     df = pd.read_csv(filepath)
@@ -115,6 +116,8 @@ def train_evaluate_models(X, y):
     results = {}
     
     for name, model in models.items():
+        print(f"\nTraining {name}...")
+        
         # Train base model
         model.fit(X_train_scaled, y_train)
         
@@ -213,6 +216,10 @@ def main():
     # Select best model based on Brier score
     best_model_name = min(results.items(), key=lambda x: x[1]['brier_score'])[0]
     print(f"\nBest Model (based on Brier score): {best_model_name}")
+    
+    #save best model
+    best_model = calibrated_models[best_model_name]
+    joblib.dump(best_model, 'best_model.pkl')
 
 if __name__ == "__main__":
     main() 

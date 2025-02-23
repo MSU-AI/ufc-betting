@@ -1,6 +1,8 @@
 *.db
 *.venv
 *.sqlite
+*.pkl
 *.env
 /betting-website/node_modules
 /betting-website/.next
+
