@@ -5,3 +5,5 @@
 
 # Directories
 /venv
+/betting-website/node_modules
+/betting-website/.next

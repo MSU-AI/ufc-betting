@@ -1,3 +1,4 @@
+import React from "react";
 import GameDetails from "../../components/GameDetails";
 
 // Uncomment when we're ready!
@@ -25,22 +26,19 @@ export default function GameDetailsPage() {
         book: "Caesar's Palace",
         moneyline: "+300",
         probability: "40%",
-        edge: "3%",
-        expectedValue: "$2",
+        edge: "-3%"
       },
       {
         book: "BetMGM",
         moneyline: "+250",
         probability: "20%",
-        edge: "2.3%",
-        expectedValue: "$4",
+        edge: "2.3%"
       },
       {
         book: "DraftKings",
         moneyline: "+300",
         probability: "40%",
-        edge: "3%",
-        expectedValue: "$2",
+        edge: "-3%"
       },
     ],
     Minnesota: [
@@ -48,31 +46,33 @@ export default function GameDetailsPage() {
         book: "Caesar's Palace",
         moneyline: "+320",
         probability: "38%",
-        edge: "2.5%",
-        expectedValue: "$2.5",
+        edge: "-2.5%"
       },
       {
         book: "BetMGM",
         moneyline: "+280",
         probability: "42%",
-        edge: "3%",
-        expectedValue: "$1.8",
+        edge: "3%"
       },
       {
         book: "DraftKings",
         moneyline: "+310",
         probability: "40%",
-        edge: "2.8%",
-        expectedValue: "$2.2",
+        edge: "-2.8%"
       },
     ],
+  };
+
+  const teamLogos = {
+    Detroit: "DET",
+    Minnesota: "MIN",
   };
 
   // dervies keys dynamically.. from the keys of mockOddsData.
   const teamNames = Object.keys(mockOddsData);
   
 
-  return <GameDetails teamNames={teamNames} oddsData={mockOddsData} />;
+  return <GameDetails teamNames={teamNames} oddsData={mockOddsData} logos={teamLogos} />;
 }
 
 
