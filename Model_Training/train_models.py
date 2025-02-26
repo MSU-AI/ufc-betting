@@ -8,26 +8,29 @@ from sklearn.metrics import brier_score_loss, roc_auc_score, roc_curve, log_loss
 import xgboost as xgb
 import lightgbm as lgb
 import matplotlib.pyplot as plt
-from feature_engineering import engineer_features
 import joblib
+from feature_engineering import engineer_features
 
-def load_data(filepath):
+def load_data(filepath, basic_features_only=False):
     df = pd.read_csv(filepath)
     
     # Convert win/loss to binary
     df['target'] = (df['wl_home'] == 'W').astype(int)
     
     # Basic features (season averages)
-    base_features = ['home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
-                    'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
-                    'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
-                    'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct']
+    base_features = [
+        'home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
+        'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
+        'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
+        'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
+    ]
     
-    # Engineer new features
-    engineered_features = engineer_features(df)
-    
-    # Combine all features
-    feature_cols = base_features + engineered_features
+    if basic_features_only:
+        feature_cols = base_features
+    else:
+        # Engineer new features
+        engineered_features = engineer_features(df)
+        feature_cols = base_features + engineered_features
     
     # Drop rows with missing values
     df = df.dropna(subset=feature_cols + ['target'])
@@ -36,10 +39,9 @@ def load_data(filepath):
     X = df[feature_cols]
     y = df['target']
     
-    # Print feature importance using correlation with target
-    correlations = X.corrwith(y).abs().sort_values(ascending=False)
-    print("\nFeature Correlations with Target:")
-    print(correlations)
+    print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
+    print(f"Number of features: {len(feature_cols)}")
+    print("Features used:", feature_cols)
     
     return X, y
 
@@ -194,14 +196,14 @@ def plot_log_loss(results):
     plt.close()
 
 def main():
-    # Load data
-    X, y = load_data('team_game_stats.csv')
+    # Load data with only basic features
+    X, y = load_data('team_game_stats.csv', basic_features_only=True)
     
     # Train and evaluate models
     calibrated_models, results = train_evaluate_models(X, y)
     
     # Print results
-    print("\nModel Performance:")
+    print("\nModel Performance (Basic Features Only):")
     for name, result in results.items():
         print(f"\n{name}:")
         print(f"Brier Score: {result['brier_score']:.3f}")
@@ -217,9 +219,13 @@ def main():
     best_model_name = min(results.items(), key=lambda x: x[1]['brier_score'])[0]
     print(f"\nBest Model (based on Brier score): {best_model_name}")
     
-    #save best model
+    # Save best model and feature names
     best_model = calibrated_models[best_model_name]
-    joblib.dump(best_model, 'best_model.pkl')
+    feature_names = X.columns.tolist()
+    joblib.dump({
+        'model': best_model,
+        'feature_names': feature_names
+    }, 'basic_features_model.pkl')
 
 if __name__ == "__main__":
     main() 

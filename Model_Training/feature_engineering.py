@@ -124,137 +124,75 @@ def create_performance_metrics(df):
     df['performance_diff'] = df['home_performance'] - df['away_performance']
     return ['home_performance', 'away_performance', 'performance_diff']
 
+def create_efficiency_metrics(df):
+    """Calculate efficiency-based metrics."""
+    # Offensive efficiency (points per shooting percentage)
+    df['home_off_eff'] = df['home_avg_pts'] / (df['home_avg_fg_pct'] * 100)
+    df['away_off_eff'] = df['away_avg_pts'] / (df['away_avg_fg_pct'] * 100)
+    df['off_eff_diff'] = df['home_off_eff'] - df['away_off_eff']
+    
+    # True shooting percentage
+    df['home_ts_pct'] = df['home_avg_pts'] / (2 * (df['home_avg_fg_pct'] * 100 + 0.44 * df['home_avg_ft_pct'] * 100))
+    df['away_ts_pct'] = df['away_avg_pts'] / (2 * (df['away_avg_fg_pct'] * 100 + 0.44 * df['away_avg_ft_pct'] * 100))
+    df['ts_pct_diff'] = df['home_ts_pct'] - df['away_ts_pct']
+    
+    return ['home_off_eff', 'away_off_eff', 'off_eff_diff',
+            'home_ts_pct', 'away_ts_pct', 'ts_pct_diff']
+
+def create_performance_differentials(df):
+    """Calculate differentials between home and away team stats."""
+    # Basic stat differentials
+    df['pts_diff'] = df['home_avg_pts'] - df['away_avg_pts']
+    df['reb_diff'] = df['home_avg_reb'] - df['away_avg_reb']
+    df['ast_diff'] = df['home_avg_ast'] - df['away_avg_ast']
+    df['stl_diff'] = df['home_avg_stl'] - df['away_avg_stl']
+    df['blk_diff'] = df['home_avg_blk'] - df['away_avg_blk']
+    
+    # Shooting percentage differentials
+    df['fg_pct_diff'] = df['home_avg_fg_pct'] - df['away_avg_fg_pct']
+    df['fg3_pct_diff'] = df['home_avg_fg3_pct'] - df['away_avg_fg3_pct']
+    df['ft_pct_diff'] = df['home_avg_ft_pct'] - df['away_avg_ft_pct']
+    
+    return ['pts_diff', 'reb_diff', 'ast_diff', 'stl_diff', 'blk_diff',
+            'fg_pct_diff', 'fg3_pct_diff', 'ft_pct_diff']
+
+def create_composite_metrics(df):
+    """Create composite performance metrics."""
+    # Defensive rating (blocks + steals)
+    df['home_def_rating'] = df['home_avg_blk'] + df['home_avg_stl']
+    df['away_def_rating'] = df['away_avg_blk'] + df['away_avg_stl']
+    df['def_rating_diff'] = df['home_def_rating'] - df['away_def_rating']
+    
+    # Overall performance rating
+    df['home_performance'] = (
+        df['home_avg_pts'] * 1.0 +
+        df['home_avg_reb'] * 0.4 +
+        df['home_avg_ast'] * 0.3 +
+        df['home_def_rating'] * 0.3
+    )
+    
+    df['away_performance'] = (
+        df['away_avg_pts'] * 1.0 +
+        df['away_avg_reb'] * 0.4 +
+        df['away_avg_ast'] * 0.3 +
+        df['away_def_rating'] * 0.3
+    )
+    
+    df['performance_diff'] = df['home_performance'] - df['away_performance']
+    
+    return ['home_def_rating', 'away_def_rating', 'def_rating_diff',
+            'home_performance', 'away_performance', 'performance_diff']
+
 def engineer_features(df):
-    """
-    Engineer additional features for team performance analysis and ensure all stats are floats
-    Returns both the modified DataFrame and list of engineered feature columns
-    """
+    """Main function to engineer all features."""
     engineered_features = []
     
-    # First ensure all numeric columns are float
-    numeric_columns = [
-        'home_avg_pts', 'away_avg_pts',
-        'home_avg_reb', 'away_avg_reb',
-        'home_avg_ast', 'away_avg_ast',
-        'home_avg_stl', 'away_avg_stl',
-        'home_avg_blk', 'away_avg_blk',
-        'home_avg_fg_pct', 'away_avg_fg_pct',
-        'home_avg_fg3_pct', 'away_avg_fg3_pct',
-        'home_avg_ft_pct', 'away_avg_ft_pct'
-    ]
-    engineered_features.extend(numeric_columns)
-    
-    for col in numeric_columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce').astype(float)
-    
-    # Create rolling window features (last N games)
-    windows = [3, 5, 10]
-    
-    for window in windows:
-        # Rolling averages for each team
-        win_rate_col = f'home_win_rate_{window}g'
-        df[win_rate_col] = df.groupby('team_id_home')['wl_home'].transform(
-            lambda x: pd.to_numeric(x == 'W', errors='coerce').rolling(window, min_periods=1).mean()
-        ).astype(float)
-        engineered_features.append(win_rate_col)
-        
-        # Offensive features
-        home_eff_col = f'home_scoring_efficiency_{window}g'
-        away_eff_col = f'away_scoring_efficiency_{window}g'
-        
-        df[home_eff_col] = (
-            df.groupby('team_id_home')['home_avg_pts'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            ) / df.groupby('team_id_home')['home_avg_fg_pct'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            )
-        ).astype(float)
-        
-        df[away_eff_col] = (
-            df.groupby('team_id_away')['away_avg_pts'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            ) / df.groupby('team_id_away')['away_avg_fg_pct'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            )
-        ).astype(float)
-        
-        engineered_features.extend([home_eff_col, away_eff_col])
-        
-        # Defensive features
-        home_def_col = f'home_defensive_rating_{window}g'
-        away_def_col = f'away_defensive_rating_{window}g'
-        
-        df[home_def_col] = (
-            df.groupby('team_id_home')['home_avg_stl'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            ) + df.groupby('team_id_home')['home_avg_blk'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            )
-        ).astype(float)
-        
-        df[away_def_col] = (
-            df.groupby('team_id_away')['away_avg_stl'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            ) + df.groupby('team_id_away')['away_avg_blk'].transform(
-                lambda x: x.rolling(window, min_periods=1).mean()
-            )
-        ).astype(float)
-        
-        engineered_features.extend([home_def_col, away_def_col])
-    
-    # Head-to-head features
-    df['h2h_wins'] = df.groupby(['team_id_home', 'team_id_away'])['wl_home'].transform(
-        lambda x: pd.to_numeric(x == 'W', errors='coerce').expanding().mean()
-    ).astype(float)
-    engineered_features.append('h2h_wins')
-    
-    # Home/Away performance
-    df['home_advantage'] = df.groupby('team_id_home')['wl_home'].transform(
-        lambda x: pd.to_numeric(x == 'W', errors='coerce').expanding().mean()
-    ).astype(float)
-    
-    df['away_disadvantage'] = df.groupby('team_id_away')['wl_home'].transform(
-        lambda x: pd.to_numeric(x == 'L', errors='coerce').expanding().mean()
-    ).astype(float)
-    
-    engineered_features.extend(['home_advantage', 'away_disadvantage'])
-    
-    # Momentum features
-    df['home_momentum'] = df.groupby('team_id_home')['wl_home'].transform(
-        lambda x: pd.to_numeric(x == 'W', errors='coerce').rolling(3, min_periods=1).sum()
-    ).astype(float)
-    
-    df['away_momentum'] = df.groupby('team_id_away')['wl_home'].transform(
-        lambda x: pd.to_numeric(x == 'L', errors='coerce').rolling(3, min_periods=1).sum()
-    ).astype(float)
-    
-    engineered_features.extend(['home_momentum', 'away_momentum'])
-    
-    # Shooting efficiency differential
-    shooting_diffs = ['fg_pct_diff', 'fg3_pct_diff', 'ft_pct_diff']
-    df['fg_pct_diff'] = (df['home_avg_fg_pct'] - df['away_avg_fg_pct']).astype(float)
-    df['fg3_pct_diff'] = (df['home_avg_fg3_pct'] - df['away_avg_fg3_pct']).astype(float)
-    df['ft_pct_diff'] = (df['home_avg_ft_pct'] - df['away_avg_ft_pct']).astype(float)
-    engineered_features.extend(shooting_diffs)
-    
-    # Overall team efficiency
-    df['home_efficiency'] = (
-        (df['home_avg_pts'] + df['home_avg_ast'] + df['home_avg_reb']) /
-        (df['home_avg_fg_pct'] + df['home_avg_fg3_pct'] + df['home_avg_ft_pct'])
-    ).astype(float)
-    
-    df['away_efficiency'] = (
-        (df['away_avg_pts'] + df['away_avg_ast'] + df['away_avg_reb']) /
-        (df['away_avg_fg_pct'] + df['away_avg_fg3_pct'] + df['away_avg_ft_pct'])
-    ).astype(float)
-    
-    engineered_features.extend(['home_efficiency', 'away_efficiency'])
+    # Add all engineered features
+    engineered_features.extend(create_efficiency_metrics(df))
+    engineered_features.extend(create_performance_differentials(df))
+    engineered_features.extend(create_composite_metrics(df))
     
     # Fill any NaN values with 0
-    df = df.fillna(0.0)
-    
-    # Final check to ensure all numeric columns are float
-    numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
-    df[numeric_cols] = df[numeric_cols].astype(float)
+    df[engineered_features] = df[engineered_features].fillna(0)
     
     return engineered_features 
