@@ -10,6 +10,9 @@ import lightgbm as lgb
 import matplotlib.pyplot as plt
 import joblib
 from feature_engineering import engineer_features
+import json
+from datetime import datetime
+import os
 
 def load_data(filepath, basic_features_only=False):
     df = pd.read_csv(filepath)
@@ -195,6 +198,25 @@ def plot_log_loss(results):
     plt.savefig('log_loss.png')
     plt.close()
 
+def save_model_metrics(best_model_name, best_brier_score):
+    """Save best model type and Brier score"""
+    metrics = {
+        'model_type': best_model_name,
+        'brier_score': float(best_brier_score),
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    with open('model_performance.json', 'w') as w:
+        json.dump(metrics, w, indent=4)
+
+def save_model(calibrated_model, feature_names):
+    """Save calibrated model and feature names using joblib"""
+    model_data = {
+        'model': calibrated_model,
+        'feature_names': feature_names
+    }
+    joblib.dump(model_data, 'calibrated_model.joblib')
+
 def main():
     # Load data with only basic features
     X, y = load_data('team_game_stats.csv', basic_features_only=True)
@@ -203,29 +225,29 @@ def main():
     calibrated_models, results = train_evaluate_models(X, y)
     
     # Print results
-    print("\nModel Performance (Basic Features Only):")
+    print("\nModel Performance:")
     for name, result in results.items():
         print(f"\n{name}:")
         print(f"Brier Score: {result['brier_score']:.3f}")
         print(f"AUC Score: {result['auc_score']:.2f}")
         print(f"Log Loss: {result['log_loss']:.3f}")
     
-    # Plot all curves
+    # Plot performance curves
     plot_calibration_curves(results)
     plot_roc_curves(results)
     plot_log_loss(results)
     
     # Select best model based on Brier score
     best_model_name = min(results.items(), key=lambda x: x[1]['brier_score'])[0]
-    print(f"\nBest Model (based on Brier score): {best_model_name}")
+    best_brier_score = results[best_model_name]['brier_score']
     
-    # Save best model and feature names
+    # Save metrics
+    save_model_metrics(best_model_name, best_brier_score)
+    
+    # Save best model
     best_model = calibrated_models[best_model_name]
-    feature_names = X.columns.tolist()
-    joblib.dump({
-        'model': best_model,
-        'feature_names': feature_names
-    }, 'basic_features_model.pkl')
+    joblib.dump(best_model, 'best_model.joblib')
+    print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
 
 if __name__ == "__main__":
     main() 

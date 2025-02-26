@@ -3,6 +3,9 @@
 *.sqlite
 *.env
 *.pkl
+*.json
+
+
 
 # Directories
 /venv
