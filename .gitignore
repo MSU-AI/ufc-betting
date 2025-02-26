@@ -2,6 +2,7 @@
 *.venv
 *.sqlite
 *.env
+*.pkl
 
 # Directories
 /venv
