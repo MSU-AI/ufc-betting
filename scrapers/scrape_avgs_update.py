@@ -9,7 +9,7 @@ import schedule
 
 # MongDB connection
 load_dotenv()
-mongo_url = os.getenv("MONGODB-URL")
+mongo_url = os.getenv("MONGODB_URI")
 client = MongoClient(mongo_url)
 db = client["nba_stats"]
 collection = db["team_averages"]

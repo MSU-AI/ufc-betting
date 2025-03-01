@@ -11,3 +11,5 @@
 /venv
 /betting-website/node_modules
 /betting-website/.next
+/Model_Deployment/__pycache__
+**/__pycache__/
