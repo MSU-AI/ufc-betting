@@ -185,14 +185,14 @@ def create_composite_metrics(df):
 
 def engineer_features(df):
     """Main function to engineer all features."""
-    engineered_features = []
-    
-    # Add all engineered features
-    engineered_features.extend(create_efficiency_metrics(df))
-    engineered_features.extend(create_performance_differentials(df))
-    engineered_features.extend(create_composite_metrics(df))
-    
-    # Fill any NaN values with 0
-    df[engineered_features] = df[engineered_features].fillna(0)
-    
-    return engineered_features 
+    create_offensive_ratings(df)
+    create_efficiency_differences(df)
+    create_basic_differentials(df)
+    create_defensive_metrics(df)
+    create_shooting_efficiency(df)
+    create_performance_metrics(df)
+    create_efficiency_metrics(df)
+    create_performance_differentials(df)
+    create_composite_metrics(df)
+
+    return df

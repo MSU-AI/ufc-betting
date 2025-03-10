@@ -28,23 +28,20 @@ def load_data(filepath, basic_features_only=False):
         'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
     ]
     
-    if basic_features_only:
-        feature_cols = base_features
-    else:
+    if not basic_features_only:
         # Engineer new features
-        engineered_features = engineer_features(df)
-        feature_cols = base_features + engineered_features
+        df = engineer_features(df)
     
     # Drop rows with missing values
-    df = df.dropna(subset=feature_cols + ['target'])
+    df = df.dropna(subset=df.columns.tolist())
     
     # Create feature matrix and target vector
-    X = df[feature_cols]
+    X = df.drop(columns=['target','game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
     y = df['target']
     
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
-    print(f"Number of features: {len(feature_cols)}")
-    print("Features used:", feature_cols)
+    print(f"Number of features: {len(X.columns)}")
+    print("Features used:", X.columns.tolist())
     
     return X, y
 
@@ -219,7 +216,7 @@ def save_model(calibrated_model, feature_names):
 
 def main():
     # Load data with only basic features
-    X, y = load_data('team_game_stats.csv', basic_features_only=True)
+    X, y = load_data('team_game_stats.csv', basic_features_only=False)
     
     # Train and evaluate models
     calibrated_models, results = train_evaluate_models(X, y)
