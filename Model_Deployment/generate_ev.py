@@ -78,6 +78,8 @@ def prepare_stats(home_stats: Dict, away_stats: Dict) -> pd.DataFrame:
     if validated_stats is None:
         return None
     
+    validated_stats = engineer_features(validated_stats)
+    
     # Create DataFrame and convert to float32
     return pd.DataFrame([validated_stats], dtype=np.float32)
 
