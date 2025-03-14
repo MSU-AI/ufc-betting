@@ -16,6 +16,7 @@ import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 import joblib
 from expected_val import calc_expected_val
+from results_insert import insert_results
 
 # Get path to model file
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "best_model.joblib")
@@ -80,9 +81,9 @@ def prepare_stats(home_stats: Dict, away_stats: Dict) -> pd.DataFrame:
     validated_stats = validate_stats(home_stats, away_stats)
     if validated_stats is None:
         return None
-    
+
     validated_stats = engineer_features(validated_stats)
-    
+
     # Create DataFrame and convert to float32
     return pd.DataFrame([validated_stats], dtype=np.float32)
 
@@ -173,6 +174,7 @@ if __name__ == "__main__":
     results = generate_ev()
 
     pprint(results)
+    insert_results(results)
 
     # output results to json file
     with open("results.json", "w") as f:
