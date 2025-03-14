@@ -1,5 +1,5 @@
 import React from "react";
-import GameDetails from "../../components/GameDetails";
+import GameDetails from "@/components/GameDetails";
 
 // Using mock data until API is ready:
 export default function GameDetailsPage() {
