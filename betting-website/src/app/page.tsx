@@ -3,8 +3,28 @@
 import React from "react";
 import Header from "../components/Header";
 import { Clock, MapPin } from "lucide-react";
-import * as NBAIcons from "react-nba-logos";
 import { Switch } from "@/components/ui/switch";
+
+// Helper to compute the logo file path dynamically.
+// It expects the file name to exactly match the team name (spaces included)
+// and uses encodeURIComponent to handle spaces.
+const getTeamLogo = (team: string) => `/logos/${encodeURIComponent(team)}.svg`;
+
+// Example game data; in your production app this would come from an API.
+const games = [
+  {
+    team1: "Detroit Pistons",
+    team2: "Minnesota Timberwolves",
+    location: "Detroit",
+    time: "7:00 PM",
+  },
+  {
+    team1: "Dallas Mavericks",
+    team2: "Los Angeles Lakers",
+    location: "Detroit",
+    time: "7:00 PM",
+  },
+];
 
 export default function Home() {
   const [liveBets, setLiveBets] = React.useState(false);
@@ -18,14 +38,14 @@ export default function Home() {
         <div className="flex-1">
           {/* Top row: Tabs + Live Bets toggle */}
           <div className="flex items-center justify-between mb-6">
-            {/* Tabs */}
             <div className="flex gap-6">
-              <span className="font-medium border-b-2 border-red-500 pb-1">Featured</span>
+              <span className="font-medium border-b-2 border-red-500 pb-1">
+                Featured
+              </span>
               <span className="text-gray-500 cursor-pointer">Today</span>
               <span className="text-gray-500 cursor-pointer">Tomorrow</span>
               <span className="text-gray-500 cursor-pointer">Upcoming</span>
             </div>
-            {/* Live Bets Toggle */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Live Bets</span>
               <Switch checked={liveBets} onCheckedChange={setLiveBets} />
@@ -34,51 +54,51 @@ export default function Home() {
 
           {/* Game Cards */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-5 shadow-md">
-              <div className="flex items-center gap-3">
-                {NBAIcons.DET && <NBAIcons.DET size={36} />}
-                <span className="font-semibold text-lg text-gray-900 font-inter">Pistons</span>
-              </div>
-              <div className="flex items-center gap-3 mt-2">
-                {NBAIcons.MIN && <NBAIcons.MIN size={36} />}
-                <span className="font-semibold text-lg text-gray-900 font-inter">Timberwolves</span>
-              </div>
-
-              <div className="mt-5 pt-4 border-t flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <MapPin className="h-5 w-5" />
-                  <span className="text-sm font-medium font-inter">Detroit</span>
+            {games.map((game, index) => (
+              <div key={index} className="bg-white rounded-lg p-5 shadow-md">
+                {/* Team 1 */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
+                    <img
+                      src={getTeamLogo(game.team1)}
+                      alt={`${game.team1} logo`}
+                      className="object-contain w-full h-full p-1"
+                    />
+                  </div>
+                  <span className="font-semibold text-lg text-gray-900 font-inter">
+                    {game.team1}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Clock className="h-5 w-5" />
-                  <span className="font-semibold text-sm font-inter">7:00 PM</span>
+                {/* Team 2 */}
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
+                    <img
+                      src={getTeamLogo(game.team2)}
+                      alt={`${game.team2} logo`}
+                      className="object-contain w-full h-full p-1"
+                    />
+                  </div>
+                  <span className="font-semibold text-lg text-gray-900 font-inter">
+                    {game.team2}
+                  </span>
+                </div>
+                {/* Game Details */}
+                <div className="mt-5 pt-4 border-t flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <MapPin className="h-5 w-5" />
+                    <span className="text-sm font-medium font-inter">
+                      {game.location}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-semibold text-sm font-inter">
+                      {game.time}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>      
-
-
-            {/* Dallas vs LA */}
-            <div className="bg-white rounded-lg p-5 shadow-md">
-              <div className="flex items-center gap-3">
-                {NBAIcons.DAL && <NBAIcons.DAL size={36} />}
-                <span className="font-semibold text-lg text-gray-900 font-inter">Mavericks</span>
-              </div>
-              <div className="flex items-center gap-3 mt-2">
-                {NBAIcons.LAL && <NBAIcons.LAL size={36} />}
-                <span className="font-semibold text-lg text-gray-900 font-inter">Lakers</span>
-              </div>
-
-              <div className="mt-5 pt-4 border-t flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <MapPin className="h-5 w-5" />
-                  <span className="text-sm font-medium font-inter">Detroit</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Clock className="h-5 w-5" />
-                  <span className="font-semibold text-sm font-inter">7:00 PM</span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -90,7 +110,6 @@ export default function Home() {
               <p>Detroit vs. Minnesota</p>
             </div>
           </div>
-
           <div className="bg-white rounded-lg p-4">
             <h3 className="text-lg font-medium mb-3">Learn More</h3>
             <button className="w-full bg-blue-50 hover:bg-blue-100 p-2 rounded mb-2 text-left">

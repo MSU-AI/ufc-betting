@@ -4,8 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OddsTable from "./OddsTable";
 import Header from "./Header";
 import { FaTrophy } from "react-icons/fa";
-import { AlertTriangleIcon, ClockIcon, MapPinIcon, TrendingUpIcon } from "lucide-react";
-import * as NBAIcons from "react-nba-logos";
+import {
+  AlertTriangleIcon,
+  ClockIcon,
+  MapPinIcon,
+  TrendingUpIcon,
+} from "lucide-react";
 
 export type OddsRow = {
   book: string;
@@ -20,49 +24,64 @@ export type GameDetailsProps = {
     [teamName: string]: OddsRow[];
   };
   logos?: {
-    [teamName: string]: string; // e.g. "DET", "MIN"
+    [teamName: string]: string; // mapping from team name to full logo path
   };
 };
 
-const GameDetails: React.FC<GameDetailsProps> = ({ teamNames, oddsData, logos }) => {
-  // team with the highest winning probability from the first odds row of each team.
+// Fallback function in case a mapping isn’t provided
+const getTeamLogo = (team: string) => `/logos/${team}.svg`;
+
+function GameDetails({ teamNames, oddsData, logos }: GameDetailsProps) {
+  // Determine the team with the highest winning probability from the first odds row
   const bestTeam = React.useMemo(() => {
     return teamNames.reduce((prev, curr) => {
-      const currProb = parseFloat(oddsData[curr][0]?.probability.replace("%", "")) || 0;
-      const prevProb = parseFloat(oddsData[prev][0]?.probability.replace("%", "")) || 0;
+      const currProb =
+        parseFloat(oddsData[curr][0]?.probability.replace("%", "")) || 0;
+      const prevProb =
+        parseFloat(oddsData[prev][0]?.probability.replace("%", "")) || 0;
       return currProb > prevProb ? curr : prev;
-    });
+    }, teamNames[0]);
   }, [teamNames, oddsData]);
+
+  // Use logos prop if provided, otherwise fallback to the default function.
+  const logoLeft = logos?.[teamNames[0]] ?? getTeamLogo(teamNames[0]);
+  const logoRight = logos?.[teamNames[1]] ?? getTeamLogo(teamNames[1]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Header />
 
       <main className="mx-auto px-4 sm:px-6 lg:px-8 mt-4 max-w-4xl">
-        {/* main card containing matchup info and team selection */}
+        {/* Main card containing matchup info and team selection */}
         <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
-          {/* matchup heading with logos in a flex container */}
+          {/* Matchup heading with logos in a flex container */}
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center -mb-3">
             <div className="flex items-center justify-center gap-4">
+              {/* Render left team logo */}
               <div className="flex items-center justify-center">
-                {logos && logos[teamNames[0]] && (
-                  // render left team logo; ensure the key maps to one of the exported logos from react-nba-logos
-                  React.createElement(NBAIcons[logos[teamNames[0]] as keyof typeof NBAIcons], { size: 90 })
-                )}
+                <img
+                  src={logoLeft}
+                  alt={`${teamNames[0]} logo`}
+                  width={90}
+                  height={90}
+                />
               </div>
               <span>
                 {teamNames[0]} vs. {teamNames[1]}
               </span>
+              {/* Render right team logo */}
               <div className="flex items-center justify-center">
-                {logos && logos[teamNames[1]] && (
-                  // render right team logo
-                  React.createElement(NBAIcons[logos[teamNames[1]] as keyof typeof NBAIcons], { size: 90 })
-                )}
+                <img
+                  src={logoRight}
+                  alt={`${teamNames[1]} logo`}
+                  width={90}
+                  height={90}
+                />
               </div>
             </div>
           </h1>
 
-          {/* info bar with game details */}
+          {/* Info bar with game details */}
           <div className="mb-4 space-y-3">
             <div className="flex items-center justify-center gap-3 text-sm sm:text-base text-gray-600">
               <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1 rounded-full">
@@ -127,6 +146,6 @@ const GameDetails: React.FC<GameDetailsProps> = ({ teamNames, oddsData, logos })
       </main>
     </div>
   );
-};
+}
 
 export default GameDetails;
