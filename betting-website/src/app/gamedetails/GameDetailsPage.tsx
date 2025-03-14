@@ -3,47 +3,16 @@ import GameDetails from "@/components/GameDetails";
 
 // Using mock data until API is ready:
 export default function GameDetailsPage() {
-  // Mock data that supports dynamic team names
   const mockOddsData = {
     Detroit: [
-      {
-        book: "Caesar's Palace",
-        moneyline: "+300",
-        probability: "40%",
-        edge: "-3%",
-      },
-      {
-        book: "BetMGM",
-        moneyline: "+250",
-        probability: "20%",
-        edge: "2.3%",
-      },
-      {
-        book: "DraftKings",
-        moneyline: "+300",
-        probability: "40%",
-        edge: "-3%",
-      },
+      { book: "Caesar's Palace", moneyline: "+300", probability: "40%", edge: "-3%" },
+      { book: "BetMGM", moneyline: "+250", probability: "20%", edge: "2.3%" },
+      { book: "DraftKings", moneyline: "+300", probability: "40%", edge: "-3%" },
     ],
     Minnesota: [
-      {
-        book: "Caesar's Palace",
-        moneyline: "+320",
-        probability: "38%",
-        edge: "-2.5%",
-      },
-      {
-        book: "BetMGM",
-        moneyline: "+280",
-        probability: "42%",
-        edge: "3%",
-      },
-      {
-        book: "DraftKings",
-        moneyline: "+310",
-        probability: "40%",
-        edge: "-2.8%",
-      },
+      { book: "Caesar's Palace", moneyline: "+320", probability: "38%", edge: "-2.5%" },
+      { book: "BetMGM", moneyline: "+280", probability: "42%", edge: "3%" },
+      { book: "DraftKings", moneyline: "+310", probability: "40%", edge: "-2.8%" },
     ],
   };
 
