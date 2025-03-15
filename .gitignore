@@ -13,3 +13,6 @@
 /betting-website/.next
 /Model_Deployment/__pycache__
 **/__pycache__/
+/betting-website/.env.local
+/Model_Deployment/.env.local
+*.local
