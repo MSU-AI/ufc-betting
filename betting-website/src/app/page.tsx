@@ -1,55 +1,50 @@
-import Image from "next/image";
+"use client";
+
 import Header from "../components/Header";
+
+const tabs = ["Featured", "Today", "Tomorrow", "Upcoming"];
 
 export default function Home() {
   return (
-    <div className="w-full h-screen flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-100">
       <Header />
-
-      {/* Main Content */}
-      <div className="flex flex-1 w-full max-w-6xl mx-auto mt-4 p-4 gap-4">
-        {/* Left Section - All Games */}
-        <div className="flex-1 bg-white shadow-md p-4 rounded-md border border-blue-500">
-          <h2 className="text-center text-xl font-semibold">All Games</h2>
-          <div className="flex justify-center gap-4 border-b pb-2 mt-2">
-            <span className="font-bold">Featured</span>
-            <span className="text-gray-500">Today</span>
-            <span className="text-gray-500">Tomorrow</span>
-            <span className="text-gray-500">Upcoming</span>
-          </div>
-          
-          {/* Game Cards */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            {[1, 2].map((game) => (
-              <div key={game} className="p-4 bg-white shadow-md rounded-md">
-                <h3 className="text-lg font-semibold">Detroit vs Minnesota</h3>
-                <p className="text-gray-500">Location: Detroit City</p>
-                <p className="text-right font-bold">7:00 PM</p>
+      <div className="max-w-6xl mx-auto p-4">
+        <div className="flex space-x-2 border-b pb-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              className="px-4 py-2 rounded bg-white"
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          {[1, 2].map((_, index) => (
+            <div key={index} className="bg-white p-4 rounded-lg shadow">
+              <div className="flex items-center space-x-2">
+                <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+                <div className="font-bold">Detroit vs. Minnesota</div>
               </div>
-            ))}
-          </div>
+              <div className="mt-2 text-gray-600">Location: Detroit City</div>
+              <div className="text-right font-semibold">7:00 PM</div>
+            </div>
+          ))}
         </div>
+      </div>
+      <div className="max-w-sm mx-auto p-4 mt-6 bg-white shadow-lg rounded-lg">
+        <h2 className="font-bold mb-2">Favorites</h2>
+        <div className="bg-gray-200 p-2 rounded">Detroit vs. Minnesota</div>
+      </div>
+      <div className="max-w-sm mx-auto p-4 mt-6 bg-white shadow-lg rounded-lg">
+        <h2 className="font-bold mb-2">Learn More</h2>
 
-        {/* Right Section - Favorites & Learn More */}
-        <div className="w-1/4 flex flex-col gap-4">
-          {/* Favorites */}
-          <div className="bg-white p-4 shadow-md rounded-md">
-            <h3 className="text-lg font-semibold">Favorites</h3>
-            <div className="p-2 bg-gray-200 rounded-md mt-2">Detroit vs Minnesota</div>
-          </div>
-          
-          {/* Learn More */}
-          <div className="bg-white p-4 shadow-md rounded-md">
-            <h3 className="text-lg font-semibold">Learn More</h3>
-            <button className="w-full bg-blue-300 p-2 rounded-md mt-2 text-left">
-              What Does an Edge Mean in Terms of Betting?
-            </button>
-            <button className="w-full bg-red-300 p-2 rounded-md mt-2 text-left">
-              How to Read the Bet Website
-            </button>
-          </div>
-        </div>
+        <button className="w-full bg-black text-white p-2 rounded mb-2">
+          What does an Edge Mean in terms of betting?
+        </button>
+        <button className="w-full bg-black text-white p-2 rounded">
+          How to Read the Bet Website
+        </button>
       </div>
     </div>
   );
