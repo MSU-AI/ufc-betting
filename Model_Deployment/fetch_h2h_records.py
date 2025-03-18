@@ -45,43 +45,31 @@ def extract_h2h_records(data):
                 try:
                     game_date = datetime.strptime(game["gameDateUTC"], "%Y-%m-%dT%H:%M:%SZ").date()
                     today = datetime.utcnow().date()
-
-                    # Ignore future games
                     if game_date >= today:
                         continue
-
                     home_team = game["homeTeam"]["teamName"]
                     away_team = game["awayTeam"]["teamName"]
                     home_team_id = game["homeTeam"]["teamId"]
                     away_team_id = game["awayTeam"]["teamId"]
-
-                    # Ignore non-NBA teams
                     if home_team_id not in NBA_TEAM_IDS or away_team_id not in NBA_TEAM_IDS:
-                        continue
-
+                        continue # like g league teams are ignored
                     home_score = game["homeTeam"]["score"]
                     away_score = game["awayTeam"]["score"]
 
-                    # Determine winner/loser
                     if home_score > away_score:
                         winner, loser = home_team, away_team
                     elif away_score > home_score:
                         winner, loser = away_team, home_team
                     else:
-                        continue  # No ties in the NBA
-
-                    # Initialize H2H records if missing
+                        continue  
                     if home_team not in h2h_records:
                         h2h_records[home_team] = {}
                     if away_team not in h2h_records:
                         h2h_records[away_team] = {}
-
                     if away_team not in h2h_records[home_team]:
                         h2h_records[home_team][away_team] = {"wins": 0, "losses": 0}
                     if home_team not in h2h_records[away_team]:
                         h2h_records[away_team][home_team] = {"wins": 0, "losses": 0}
-
-                    # Update win/loss count
                     h2h_records[winner][loser]["wins"] += 1
                     h2h_records[loser][winner]["losses"] += 1
 
@@ -110,7 +98,6 @@ def store_h2h_in_mongo(h2h_data):
                 collection.update_one({"team": team}, {"$set": {"h2h": opponents}})
                 print(f"Updated H2H record for {team}")
         else:
-            # Insert new record
             collection.insert_one({"team": team, "h2h": opponents})
             print(f"Inserted H2H record for {team}")
 

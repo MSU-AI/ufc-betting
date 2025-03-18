@@ -44,11 +44,9 @@ def extract_upcoming_games(data):
             for game in game_date_entry.get("games", []):  
                 try:
                     game_date = datetime.strptime(game["gameDateUTC"], "%Y-%m-%dT%H:%M:%SZ").date()
-
                     # Skip past games
                     if game_date < today:
                         continue
-
                     home_team_id = game["homeTeam"]["teamId"]
                     away_team_id = game["awayTeam"]["teamId"]
 
@@ -64,7 +62,6 @@ def extract_upcoming_games(data):
                         "arena": game["arenaName"],
                         "game_time": game["gameDateTimeUTC"]
                     })
-
                 except KeyError as e:
                     print(f"Missing key: {e}")
                 except ValueError as e:
@@ -75,21 +72,16 @@ def extract_upcoming_games(data):
 
 def store_games_in_mongo(games):
     collection = connect_to_mongo()
-    
     if not games:
         print("No upcoming games found.")
         return
-
     for game in games:
         existing_game = collection.find_one({"game_id": game["game_id"]})
-
         if existing_game:
-            # Update only if the game details have changed
             if existing_game != game:
                 collection.update_one({"game_id": game["game_id"]}, {"$set": game})
                 print(f"Updated game {game['game_id']}")
         else:
-            # Insert new game if it doesn't exist
             collection.insert_one(game)
             print(f"Inserted new game {game['game_id']}")
 
