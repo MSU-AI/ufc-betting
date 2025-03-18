@@ -1,3 +1,10 @@
+@font-face {
+  font-family: 'NflJacksonvilleJaguars-MEAB';
+  src: url('/fonts/NflJacksonvilleJaguars-MEAB.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

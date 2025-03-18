@@ -58,6 +58,7 @@ export default {
   		},
 		fontFamily: {
 			sans: ['Inter', 'system-ui', 'sans-serif'],
+			nfl: ['NflJacksonvilleJaguars-MEAB', 'sans-serif'],
 		},
 	
   	}

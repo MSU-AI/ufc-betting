@@ -39,7 +39,7 @@ export default async function Home({
         $lte: new Date(endTomorrowStr).toISOString(),
       },
     };
-  } else if (activeTab === "Upcoming" || activeTab === "Featured") {
+  } else if (activeTab === "Upcoming") {
     query = {
       game_time: {
         $gte: now.toISOString(),
@@ -48,11 +48,46 @@ export default async function Home({
     };
   }
 
-  const games = await db
-    .collection("upcoming_games")
-    .find(query)
-    .sort({ game_time: 1 })
-    .toArray();
+  let games: any[] = [];
+  if (activeTab === "Featured") {
+    // Fetch from ev_results and group documents while also keeping a unique document id
+    games = await db
+      .collection("ev_results")
+      .aggregate([
+        {
+          $group: {
+            _id: {
+              home_team: "$home_team",
+              away_team: "$away_team",
+              commence_time: "$commence_time",
+            },
+            doc_id: { $first: "$_id" }, // store the unique _id from the first document
+            home_code: { $first: "$home_code" },
+            away_code: { $first: "$away_code" },
+            home_win_prob: { $first: "$home_win_prob" },
+            away_win_prob: { $first: "$away_win_prob" },
+            bookmakers: {
+              $push: {
+                bookmaker: "$bookmaker",
+                home_odds: "$home_odds",
+                away_odds: "$away_odds",
+                home_ev: "$home_ev",
+                away_ev: "$away_ev",
+              },
+            },
+          },
+        },
+        { $sort: { "_id.commence_time": 1 } },
+      ])
+      .toArray();
+  } else {
+    // For other tabs, fetch from upcoming_games
+    games = await db
+      .collection("upcoming_games")
+      .find(query)
+      .sort({ game_time: 1 })
+      .toArray();
+  }
 
   return (
     <div className="w-full min-h-screen flex flex-col bg-gray-100">
@@ -78,61 +113,81 @@ export default async function Home({
           {/* Games List */}
           <div className="grid grid-cols-2 gap-4">
             {games.length > 0 ? (
-              games.map((game) => (
-                <div key={game.game_id} className="bg-white rounded-lg p-5 shadow-md">
-                  {/* Game Date */}
-                  <div className="flex items-center gap-2 text-gray-700 mb-4">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <span className="font-semibold text-md">
-                      {new Date(game.game_time).toLocaleDateString(undefined, {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  {/* Home Team */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
-                      <img
-                        src={getTeamLogo(game.home_team)}
-                        alt={`${game.home_team} logo`}
-                        className="object-contain w-full h-full p-1"
-                      />
+              games.map((game) => {
+                const isFeatured = activeTab === "Featured";
+                let gameTime, home_team, away_team, gameId;
+                if (isFeatured) {
+                  gameTime = new Date(game._id.commence_time);
+                  home_team = game._id.home_team;
+                  away_team = game._id.away_team;
+                  gameId = game.doc_id.toString(); // use the unique id
+                } else {
+                  gameTime = new Date(game.game_time);
+                  home_team = game.home_team;
+                  away_team = game.away_team;
+                  gameId = game.game_id;
+                }
+                return (
+                  <Link
+                    key={gameId}
+                    href={`/gamedetails?id=${encodeURIComponent(gameId)}`}
+                  >
+                    <div className="bg-white rounded-lg p-5 shadow-md cursor-pointer">
+                      {/* Game Date */}
+                      <div className="flex items-center gap-2 text-gray-700 mb-4">
+                        <Calendar className="h-5 w-5 text-gray-500" />
+                        <span className="font-semibold text-md">
+                          {gameTime.toLocaleDateString(undefined, {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      {/* Home Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
+                          <img
+                            src={getTeamLogo(home_team)}
+                            alt={`${home_team} logo`}
+                            className="object-contain w-full h-full p-1"
+                          />
+                        </div>
+                        <span className="font-semibold text-lg text-gray-900">{home_team}</span>
+                      </div>
+                      {/* Away Team */}
+                      <div className="flex items-center gap-3 mt-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
+                          <img
+                            src={getTeamLogo(away_team)}
+                            alt={`${away_team} logo`}
+                            className="object-contain w-full h-full p-1"
+                          />
+                        </div>
+                        <span className="font-semibold text-lg text-gray-900">{away_team}</span>
+                      </div>
+                      {/* Game Details */}
+                      <div className="mt-5 pt-4 border-t flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <MapPin className="h-5 w-5" />
+                          <span className="text-sm font-medium">{game.arena || "TBD"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <Clock className="h-5 w-5" />
+                          <span className="font-semibold text-sm">
+                            {gameTime.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              timeZoneName: "short",
+                            })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="font-semibold text-lg text-gray-900">{game.home_team}</span>
-                  </div>
-                  {/* Away Team */}
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
-                      <img
-                        src={getTeamLogo(game.away_team)}
-                        alt={`${game.away_team} logo`}
-                        className="object-contain w-full h-full p-1"
-                      />
-                    </div>
-                    <span className="font-semibold text-lg text-gray-900">{game.away_team}</span>
-                  </div>
-                  {/* Game Details */}
-                  <div className="mt-5 pt-4 border-t flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <MapPin className="h-5 w-5" />
-                      <span className="text-sm font-medium">{game.arena || "TBD"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Clock className="h-5 w-5" />
-                      <span className="font-semibold text-sm">
-                        {new Date(game.game_time).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZoneName: "short",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))
+                  </Link>
+                );
+              })
             ) : (
               <p className="text-gray-600 text-center col-span-2">
                 No games available for {activeTab}.
