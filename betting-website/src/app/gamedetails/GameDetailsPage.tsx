@@ -1,47 +1,56 @@
 import React from "react";
+import { ObjectId } from "mongodb";
 import GameDetails from "@/components/GameDetails";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getTeamLogo } from "@/lib/teamNameMap";
 
-export default async function GameDetailsPage() {
+export default async function GameDetailsPage({
+  searchParams,
+}: {
+  searchParams: { id?: string | string[] };
+}) {
+  const sp = await Promise.resolve(searchParams);
+  const idParam = sp.id;
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
+  if (!id) {
+    return <p className="text-center text-gray-600">No game ID provided.</p>;
+  }
   const { db } = await connectToDatabase();
-  const groupedGames = await db
-    .collection("ev_results")
-    .aggregate([
-      {
-        $group: {
-          _id: {
-            home_team: "$home_team",
-            away_team: "$away_team",
-            commence_time: "$commence_time",
-          },
-          home_code: { $first: "$home_code" },
-          away_code: { $first: "$away_code" },
-          home_win_prob: { $first: "$home_win_prob" },
-          away_win_prob: { $first: "$away_win_prob" },
-          bookmakers: {
-            $push: {
-              bookmaker: "$bookmaker",
-              home_odds: "$home_odds",
-              away_odds: "$away_odds",
-              home_ev: "$home_ev",
-              away_ev: "$away_ev",
-            },
-          },
-        },
-      },
-      { $sort: { "_id.commence_time": 1 } },
-      { $limit: 1 } // Only take the earliest upcoming event from ev_results FOR NOW
-    ])
-    .toArray();
 
-
-  if (!groupedGames.length) {
+  // Fetch one record to use as a reference for grouping
+  const baseGameRecord = await db.collection("ev_results").findOne({ _id: new ObjectId(id) });
+  if (!baseGameRecord) {
     return <p className="text-center text-gray-600">No game data available.</p>;
   }
 
-  const game = groupedGames[0];
-  const { home_team, away_team, commence_time } = game._id;
+  const { home_team, away_team, commence_time } = baseGameRecord;
+  // Query all records matching the same game (using home_team, away_team, and commence_time)
+  const gameRecords = await db.collection("ev_results").find({ home_team, away_team, commence_time }).toArray();
+  const bookmakers = gameRecords.map((record) => ({
+    book: record.bookmaker,
+    home_moneyline: record.home_odds.toString(),
+    home_probability: `${(record.home_win_prob * 100).toFixed(2)}%`,
+    home_edge: record.home_ev.toString(),
+    away_moneyline: record.away_odds.toString(),
+    away_probability: `${(record.away_win_prob * 100).toFixed(2)}%`,
+    away_edge: record.away_ev.toString(),
+  }));
+  
+  const oddsData = {
+    [home_team]: bookmakers.map((b) => ({
+      book: b.book,
+      moneyline: b.home_moneyline,
+      probability: b.home_probability,
+      edge: b.home_edge,
+    })),
+    [away_team]: bookmakers.map((b) => ({
+      book: b.book,
+      moneyline: b.away_moneyline,
+      probability: b.away_probability,
+      edge: b.away_edge,
+    })),
+  };
+
   const eventTime = new Date(commence_time);
   const gameDetails = {
     game_time: eventTime.toLocaleTimeString([], {
@@ -55,40 +64,19 @@ export default async function GameDetailsPage() {
     player_injury: "No injury updates",
   };
 
-  const formattedHomeWinProb =
-    game.home_win_prob !== undefined ? `${(game.home_win_prob * 100).toFixed(2)}%` : "N/A";
-  const formattedAwayWinProb =
-    game.away_win_prob !== undefined ? `${(game.away_win_prob * 100).toFixed(2)}%` : "N/A";
-  const oddsData = {
-    [home_team]: game.bookmakers.map((doc: any) => ({
-      book: doc.bookmaker,
-      moneyline: doc.home_odds,
-      probability:
-        doc.home_win_prob !== undefined ? `${(doc.home_win_prob * 100).toFixed(2)}%` : formattedHomeWinProb,
-      edge: doc.home_ev !== undefined ? doc.home_ev.toFixed(2) : "N/A",
-    })),
-    [away_team]: game.bookmakers.map((doc: any) => ({
-      book: doc.bookmaker,
-      moneyline: doc.away_odds,
-      probability:
-        doc.away_win_prob !== undefined ? `${(doc.away_win_prob * 100).toFixed(2)}%` : formattedAwayWinProb,
-      edge: doc.away_ev !== undefined ? doc.away_ev.toFixed(2) : "N/A",
-    })),
-  };
-
   const teamLogos = {
     [home_team]: getTeamLogo(home_team),
     [away_team]: getTeamLogo(away_team),
   };
 
   const teamNames = [home_team, away_team];
-
+  
   return (
-    <GameDetails 
-      teamNames={teamNames} 
-      oddsData={oddsData} 
-      logos={teamLogos} 
-      gameDetails={gameDetails} 
+    <GameDetails
+      teamNames={teamNames}
+      oddsData={oddsData}
+      logos={teamLogos}
+      gameDetails={gameDetails}
     />
   );
 }

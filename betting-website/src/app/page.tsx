@@ -24,42 +24,59 @@ export default async function Home({
   const endTomorrowStr = formatInTimeZone(tomorrow, timeZone, "yyyy-MM-dd'T'23:59:59XXX");
   const sevenDaysLater = addDays(now, 7);
 
-  let query = {};
-  if (activeTab === "Today") {
-    query = {
-      game_time: {
-        $gte: new Date(startTodayStr).toISOString(),
-        $lte: new Date(endTodayStr).toISOString(),
-      },
-    };
-  } else if (activeTab === "Tomorrow") {
-    query = {
-      game_time: {
-        $gte: new Date(startTomorrowStr).toISOString(),
-        $lte: new Date(endTomorrowStr).toISOString(),
-      },
-    };
-  } else if (activeTab === "Upcoming" || activeTab === "Featured") {
-    query = {
-      game_time: {
-        $gte: now.toISOString(),
-        $lte: sevenDaysLater.toISOString(),
-      },
-    };
+  let games: any[] = [];
+  if (activeTab === "Featured") {
+    // Group documents by home_team, away_team, and commence_time
+    games = await db.collection("ev_results")
+      .aggregate([
+        {
+          $group: {
+            _id: {
+              home_team: "$home_team",
+              away_team: "$away_team",
+              commence_time: "$commence_time",
+            },
+            // Pick the first document in each group (you can adjust this if needed)
+            doc: { $first: "$$ROOT" },
+          },
+        },
+        { $replaceRoot: { newRoot: "$doc" } },
+        { $sort: { commence_time: 1 } },
+      ])
+      .toArray();
+    } else {
+    // For other tabs, fetch from upcoming_games
+    let query = {};
+    if (activeTab === "Today") {
+      query = {
+        game_time: {
+          $gte: new Date(startTodayStr).toISOString(),
+          $lte: new Date(endTodayStr).toISOString(),
+        },
+      };
+    } else if (activeTab === "Tomorrow") {
+      query = {
+        game_time: {
+          $gte: new Date(startTomorrowStr).toISOString(),
+          $lte: new Date(endTomorrowStr).toISOString(),
+        },
+      };
+    } else if (activeTab === "Upcoming") {
+      query = {
+        game_time: {
+          $gte: now.toISOString(),
+          $lte: sevenDaysLater.toISOString(),
+        },
+      };
+    }
+    games = await db.collection("upcoming_games").find(query).sort({ game_time: 1 }).toArray();
   }
-
-  const games = await db
-    .collection("upcoming_games")
-    .find(query)
-    .sort({ game_time: 1 })
-    .toArray();
 
   return (
     <div className="w-full min-h-screen flex flex-col bg-gray-100">
       <Header />
       <div className="flex-1 w-full max-w-6xl mx-auto p-4 flex gap-6">
         <div className="flex-1">
-          {/* Navigation Tabs */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex gap-6">
               {["Featured", "Today", "Tomorrow", "Upcoming"].map((tabName) => (
@@ -75,64 +92,68 @@ export default async function Home({
               ))}
             </div>
           </div>
-          {/* Games List */}
           <div className="grid grid-cols-2 gap-4">
             {games.length > 0 ? (
-              games.map((game) => (
-                <div key={game.game_id} className="bg-white rounded-lg p-5 shadow-md">
-                  {/* Game Date */}
-                  <div className="flex items-center gap-2 text-gray-700 mb-4">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <span className="font-semibold text-md">
-                      {new Date(game.game_time).toLocaleDateString(undefined, {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  {/* Home Team */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
-                      <img
-                        src={getTeamLogo(game.home_team)}
-                        alt={`${game.home_team} logo`}
-                        className="object-contain w-full h-full p-1"
-                      />
+              games.map((game) => {
+                const gameTime = new Date(game.commence_time || game.game_time);
+                const home_team = game.home_team;
+                const away_team = game.away_team;
+                const gameId = game._id.toString();
+
+                return (
+                  <Link key={gameId} href={`/gamedetails?id=${encodeURIComponent(gameId)}`}>
+                    <div className="bg-white rounded-lg p-5 shadow-md cursor-pointer">
+                      <div className="flex items-center gap-2 text-gray-700 mb-4">
+                        <Calendar className="h-5 w-5 text-gray-500" />
+                        <span className="font-semibold text-md">
+                          {gameTime.toLocaleDateString(undefined, {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
+                          <img
+                            src={getTeamLogo(home_team)}
+                            alt={`${home_team} logo`}
+                            className="object-contain w-full h-full p-1"
+                          />
+                        </div>
+                        <span className="font-semibold text-lg text-gray-900">{home_team}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
+                          <img
+                            src={getTeamLogo(away_team)}
+                            alt={`${away_team} logo`}
+                            className="object-contain w-full h-full p-1"
+                          />
+                        </div>
+                        <span className="font-semibold text-lg text-gray-900">{away_team}</span>
+                      </div>
+                      <div className="mt-5 pt-4 border-t flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <MapPin className="h-5 w-5" />
+                          <span className="text-sm font-medium">{game.arena || "TBD"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <Clock className="h-5 w-5" />
+                          <span className="font-semibold text-sm">
+                            {gameTime.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              timeZoneName: "short",
+                            })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="font-semibold text-lg text-gray-900">{game.home_team}</span>
-                  </div>
-                  {/* Away Team */}
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-200">
-                      <img
-                        src={getTeamLogo(game.away_team)}
-                        alt={`${game.away_team} logo`}
-                        className="object-contain w-full h-full p-1"
-                      />
-                    </div>
-                    <span className="font-semibold text-lg text-gray-900">{game.away_team}</span>
-                  </div>
-                  {/* Game Details */}
-                  <div className="mt-5 pt-4 border-t flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <MapPin className="h-5 w-5" />
-                      <span className="text-sm font-medium">{game.arena || "TBD"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Clock className="h-5 w-5" />
-                      <span className="font-semibold text-sm">
-                        {new Date(game.game_time).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZoneName: "short",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))
+                  </Link>
+                );
+              })
             ) : (
               <p className="text-gray-600 text-center col-span-2">
                 No games available for {activeTab}.
