@@ -5,6 +5,7 @@ import os
 import sys
 from typing import List, Dict
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
+from pymongo.operations import ReplaceOne
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -50,6 +51,8 @@ def insert_results(results: List[Dict]):
     if collection is None:
         return None
 
+    bulk_results = []
+
     for game in results:
         game_info = game["game_info"]
         home_team = game_info["home_team"]
@@ -88,6 +91,16 @@ def insert_results(results: List[Dict]):
                 "away_ev": away_ev,
             }
 
-            collection.insert_one(game_result)
+            filter_criteria = {
+                "home_code": home_code,
+                "away_code": away_code,
+                "commence_time": commence_time,
+                "bookmaker": bookmaker_name,
+            }
+
+            bulk_results.append(ReplaceOne(filter_criteria, game_result, upsert=True))
+
+    if bulk_results:
+        collection.bulk_write(bulk_results)
 
     print("Generated EV insertion completed succesfully")
