@@ -35,11 +35,8 @@ export type GameDetailsProps = {
   };
 };
 
-// Fallback function if logos are missing
 const getTeamLogo = (team: string) => `/logos/${team}.svg`;
-
 function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsProps) {
-  // Determine the team with the highest win probability
   const bestTeam = React.useMemo(() => {
     return teamNames.reduce((prev, curr) => {
       const currProb = parseFloat(oddsData[curr][0]?.probability.replace("%", "")) || 0;
@@ -48,35 +45,31 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
     }, teamNames[0]);
   }, [teamNames, oddsData]);
 
-  // Team logos (fallback if not provided)
   const logoLeft = logos?.[teamNames[0]] ?? getTeamLogo(teamNames[0]);
   const logoRight = logos?.[teamNames[1]] ?? getTeamLogo(teamNames[1]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Header />
-
-      <main className="mx-auto px-4 sm:px-6 lg:px-8 mt-4 max-w-4xl">
-        {/* Main card with matchup details */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
-          {/* Matchup heading */}
+      <main className="mx-auto px-6 sm:px-8 lg:px-12 mt-6 max-w-6xl">
+        <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-12 min-h-[550px] flex flex-col justify-between">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center -mb-3">
             <div className="flex items-center justify-center gap-4">
               <div className="flex items-center justify-center">
-                <img src={logoLeft} alt={`${teamNames[0]} logo`} width={90} height={90} />
+                <img src={logoLeft} alt={`${teamNames[0]} logo`} width={70} height={70} className="min-w-[70px] flex-shrink-0" />
               </div>
-              <span>
+              <span className="whitespace-nowrap">
                 {teamNames[0]} vs. {teamNames[1]}
               </span>
               <div className="flex items-center justify-center">
-                <img src={logoRight} alt={`${teamNames[1]} logo`} width={90} height={90} />
+                <img src={logoRight} alt={`${teamNames[1]} logo`} width={70} height={70} className="min-w-[70px] flex-shrink-0" />
               </div>
             </div>
           </h1>
 
           {/* Game Details */}
           <div className="mb-4 space-y-3">
-            <div className="flex items-center justify-center gap-3 text-sm sm:text-base text-gray-600">
+            <div className="flex items-center justify-center gap-3 text-sm sm:text-base text-gray-600 mt-4">
               <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1 rounded-full">
                 <ClockIcon className="h-4 w-4" />
                 <span>{gameDetails.game_time}</span>
@@ -136,7 +129,7 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
         </div>
 
         {/* AI Prediction Section */}
-        <div className="mt-6 p-4 bg-gradient-to-r from-blue-200 to-blue-100 border border-blue-300 rounded-lg shadow-lg flex items-center justify-center">
+        <div className="mt-12 p-5 bg-gradient-to-r from-blue-200 to-blue-100 border border-blue-300 rounded-lg shadow-lg flex items-center justify-center">
           <p className="text-center text-lg sm:text-xl font-bold text-blue-800">
             AI Prediction: <span className="underline">{bestTeam}</span> is most likely to win!
           </p>
