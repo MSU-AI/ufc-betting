@@ -16,5 +16,12 @@
   "bugs": {
     "url": "https://github.com/MSU-AI/ufc-betting/issues"
   },
-  "homepage": "https://github.com/MSU-AI/ufc-betting#readme"
+  "homepage": "https://github.com/MSU-AI/ufc-betting#readme",
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.4.7",
+    "lucide-react": "^0.483.0",
+    "mongodb": "^6.14.2"
+  }
 }

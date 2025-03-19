@@ -1,5 +1,13 @@
 import React from "react";
 import { OddsRow } from "./GameDetails";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 
 type OddsTableProps = {
   oddsData: OddsRow[];
@@ -8,28 +16,38 @@ type OddsTableProps = {
 const OddsTable: React.FC<OddsTableProps> = ({ oddsData }) => {
   return (
     <div className="mt-6 overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Book</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Moneyline</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Win Probability</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Edge</th>
-            <th className="py-3 px-4 text-sm font-semibold uppercase text-gray-500">Expected Value</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {oddsData?.map((row, idx) => (
-            <tr key={idx} className="hover:bg-gray-50">
-              <td className="py-3 px-4">{row.book}</td>
-              <td className="py-3 px-4">{row.moneyline}</td>
-              <td className="py-3 px-4">{row.probability}</td>
-              <td className="py-3 px-4">{row.edge}</td>
-              <td className="py-3 px-4">{row.expectedValue}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Table className="w-full text-sm text-gray-700">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="font-bold">Casino</TableHead>
+            <TableHead className="font-bold">Moneyline</TableHead>
+            <TableHead className="font-bold">Win Probability</TableHead>
+            <TableHead className="font-bold">Edge</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {oddsData?.map((row, idx) => {
+            // Parse edge value for conditional formatting
+            const edgeValue = parseFloat(row.edge);
+            const edgeColorClass =
+              edgeValue > 0
+                ? "text-green-600"
+                : edgeValue < 0
+                ? "text-red-600"
+                : "text-gray-700";
+            return (
+              <TableRow key={idx} className="border-b border-gray-200 last:border-0">
+                <TableCell className="py-2 font-bold">{row.book}</TableCell>
+                <TableCell className="py-2 font-bold">{row.moneyline}</TableCell>
+                <TableCell className="py-2 font-bold">{row.probability}</TableCell>
+                <TableCell className={`py-2 font-bold ${edgeColorClass}`}>
+                  {row.edge}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 };

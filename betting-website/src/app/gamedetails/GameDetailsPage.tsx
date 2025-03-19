@@ -1,78 +1,94 @@
-import GameDetails from "../../components/GameDetails";
+import React from "react";
+import GameDetails from "@/components/GameDetails";
+import { connectToDatabase } from "@/lib/mongodb";
+import { getTeamLogo } from "@/lib/teamNameMap";
 
-// Uncomment when we're ready!
-// const API_URL = "...";
+export default async function GameDetailsPage() {
+  const { db } = await connectToDatabase();
+  const groupedGames = await db
+    .collection("ev_results")
+    .aggregate([
+      {
+        $group: {
+          _id: {
+            home_team: "$home_team",
+            away_team: "$away_team",
+            commence_time: "$commence_time",
+          },
+          home_code: { $first: "$home_code" },
+          away_code: { $first: "$away_code" },
+          home_win_prob: { $first: "$home_win_prob" },
+          away_win_prob: { $first: "$away_win_prob" },
+          bookmakers: {
+            $push: {
+              bookmaker: "$bookmaker",
+              home_odds: "$home_odds",
+              away_odds: "$away_odds",
+              home_ev: "$home_ev",
+              away_ev: "$away_ev",
+            },
+          },
+        },
+      },
+      { $sort: { "_id.commence_time": 1 } },
+      { $limit: 1 } // Only take the earliest upcoming event from ev_results FOR NOW
+    ])
+    .toArray();
 
-// export default async function GameDetailsPage() {
-//   // where we fetch data from the api and pass it into the details
-//   const response = await fetch(API_URL);
-//   // if needed, we can add headers (like responses)
-//   if (!response.ok) {
-//     console.error("Failed to fetch data from API");
-//     return <div>Failed to fetch data.</div>
-//   }
 
-//   const oddsData = await response.json();
-//   return <GameDetails oddsData={oddsData} />;
-// }
+  if (!groupedGames.length) {
+    return <p className="text-center text-gray-600">No game data available.</p>;
+  }
 
-// Using mock data until API is ready:
-export default function GameDetailsPage() {
-  // Mock data that supports dynamic team names
-  const mockOddsData = {
-    Detroit: [
-      {
-        book: "Caesar's Palace",
-        moneyline: "+300",
-        probability: "40%",
-        edge: "3%",
-        expectedValue: "$2",
-      },
-      {
-        book: "BetMGM",
-        moneyline: "+250",
-        probability: "20%",
-        edge: "2.3%",
-        expectedValue: "$4",
-      },
-      {
-        book: "DraftKings",
-        moneyline: "+300",
-        probability: "40%",
-        edge: "3%",
-        expectedValue: "$2",
-      },
-    ],
-    Minnesota: [
-      {
-        book: "Caesar's Palace",
-        moneyline: "+320",
-        probability: "38%",
-        edge: "2.5%",
-        expectedValue: "$2.5",
-      },
-      {
-        book: "BetMGM",
-        moneyline: "+280",
-        probability: "42%",
-        edge: "3%",
-        expectedValue: "$1.8",
-      },
-      {
-        book: "DraftKings",
-        moneyline: "+310",
-        probability: "40%",
-        edge: "2.8%",
-        expectedValue: "$2.2",
-      },
-    ],
+  const game = groupedGames[0];
+  const { home_team, away_team, commence_time } = game._id;
+  const eventTime = new Date(commence_time);
+  const gameDetails = {
+    game_time: eventTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }),
+    arena: "Location not available",
+    h2h_record: "H2H data not available",
+    over_under: "Over/Under data not available",
+    player_injury: "No injury updates",
   };
 
-  // dervies keys dynamically.. from the keys of mockOddsData.
-  const teamNames = Object.keys(mockOddsData);
-  
+  const formattedHomeWinProb =
+    game.home_win_prob !== undefined ? `${(game.home_win_prob * 100).toFixed(2)}%` : "N/A";
+  const formattedAwayWinProb =
+    game.away_win_prob !== undefined ? `${(game.away_win_prob * 100).toFixed(2)}%` : "N/A";
+  const oddsData = {
+    [home_team]: game.bookmakers.map((doc: any) => ({
+      book: doc.bookmaker,
+      moneyline: doc.home_odds,
+      probability:
+        doc.home_win_prob !== undefined ? `${(doc.home_win_prob * 100).toFixed(2)}%` : formattedHomeWinProb,
+      edge: doc.home_ev !== undefined ? doc.home_ev.toFixed(2) : "N/A",
+    })),
+    [away_team]: game.bookmakers.map((doc: any) => ({
+      book: doc.bookmaker,
+      moneyline: doc.away_odds,
+      probability:
+        doc.away_win_prob !== undefined ? `${(doc.away_win_prob * 100).toFixed(2)}%` : formattedAwayWinProb,
+      edge: doc.away_ev !== undefined ? doc.away_ev.toFixed(2) : "N/A",
+    })),
+  };
 
-  return <GameDetails teamNames={teamNames} oddsData={mockOddsData} />;
+  const teamLogos = {
+    [home_team]: getTeamLogo(home_team),
+    [away_team]: getTeamLogo(away_team),
+  };
+
+  const teamNames = [home_team, away_team];
+
+  return (
+    <GameDetails 
+      teamNames={teamNames} 
+      oddsData={oddsData} 
+      logos={teamLogos} 
+      gameDetails={gameDetails} 
+    />
+  );
 }
-
-

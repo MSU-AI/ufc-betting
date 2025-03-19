@@ -8,37 +8,40 @@ from sklearn.metrics import brier_score_loss, roc_auc_score, roc_curve, log_loss
 import xgboost as xgb
 import lightgbm as lgb
 import matplotlib.pyplot as plt
+import joblib
 from feature_engineering import engineer_features
+import json
+from datetime import datetime
+import os
 
-def load_data(filepath):
+def load_data(filepath, basic_features_only=False):
     df = pd.read_csv(filepath)
     
     # Convert win/loss to binary
     df['target'] = (df['wl_home'] == 'W').astype(int)
     
     # Basic features (season averages)
-    base_features = ['home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
-                    'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
-                    'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
-                    'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct']
+    base_features = [
+        'home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
+        'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
+        'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
+        'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
+    ]
     
-    # Engineer new features
-    engineered_features = engineer_features(df)
-    
-    # Combine all features
-    feature_cols = base_features + engineered_features
+    if not basic_features_only:
+        # Engineer new features
+        df = engineer_features(df)
     
     # Drop rows with missing values
-    df = df.dropna(subset=feature_cols + ['target'])
+    df = df.dropna(subset=df.columns.tolist())
     
     # Create feature matrix and target vector
-    X = df[feature_cols]
+    X = df.drop(columns=['target','game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
     y = df['target']
     
-    # Print feature importance using correlation with target
-    correlations = X.corrwith(y).abs().sort_values(ascending=False)
-    print("\nFeature Correlations with Target:")
-    print(correlations)
+    print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
+    print(f"Number of features: {len(X.columns)}")
+    print("Features used:", X.columns.tolist())
     
     return X, y
 
@@ -115,6 +118,8 @@ def train_evaluate_models(X, y):
     results = {}
     
     for name, model in models.items():
+        print(f"\nTraining {name}...")
+        
         # Train base model
         model.fit(X_train_scaled, y_train)
         
@@ -190,9 +195,28 @@ def plot_log_loss(results):
     plt.savefig('log_loss.png')
     plt.close()
 
+def save_model_metrics(best_model_name, best_brier_score):
+    """Save best model type and Brier score"""
+    metrics = {
+        'model_type': best_model_name,
+        'brier_score': float(best_brier_score),
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    with open('model_performance.json', 'w') as w:
+        json.dump(metrics, w, indent=4)
+
+def save_model(calibrated_model, feature_names):
+    """Save calibrated model and feature names using joblib"""
+    model_data = {
+        'model': calibrated_model,
+        'feature_names': feature_names
+    }
+    joblib.dump(model_data, 'calibrated_model.joblib')
+
 def main():
-    # Load data
-    X, y = load_data('team_game_stats.csv')
+    # Load data with only basic features
+    X, y = load_data('team_game_stats.csv', basic_features_only=False)
     
     # Train and evaluate models
     calibrated_models, results = train_evaluate_models(X, y)
@@ -205,14 +229,22 @@ def main():
         print(f"AUC Score: {result['auc_score']:.2f}")
         print(f"Log Loss: {result['log_loss']:.3f}")
     
-    # Plot all curves
+    # Plot performance curves
     plot_calibration_curves(results)
     plot_roc_curves(results)
     plot_log_loss(results)
     
     # Select best model based on Brier score
     best_model_name = min(results.items(), key=lambda x: x[1]['brier_score'])[0]
-    print(f"\nBest Model (based on Brier score): {best_model_name}")
+    best_brier_score = results[best_model_name]['brier_score']
+    
+    # Save metrics
+    save_model_metrics(best_model_name, best_brier_score)
+    
+    # Save best model
+    best_model = calibrated_models[best_model_name]
+    joblib.dump(best_model, 'best_model.joblib')
+    print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
 
 if __name__ == "__main__":
     main() 
