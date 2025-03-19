@@ -1,0 +1,32 @@
+[33m2dc7083[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m added svg logos to remove deprecated react logos package #24
+[33m74e79b3[m Script to insert ev results into db (#28)
+[33m37f0789[m Merge pull request #23 from MSU-AI/feature/scraping_recent
+[33mc9eec4c[m[33m ([m[1;31morigin/feature/scraping_recent[m[33m)[m Merge branch 'main' into feature/scraping_recent
+[33m0f3753a[m Merge pull request #27 from MSU-AI/generate_ev
+[33m9dc45eb[m[33m ([m[1;31morigin/generate_ev[m[33m)[m fixed engineering pipeline
+[33m586049f[m script to populate recent game stats
+[33m2966c0d[m Merge pull request #22 from MSU-AI/generate_ev
+[33m7a1ae66[m add generate ev py
+[33m8466f39[m update requirements.txt
+[33m7d18682[m modify gitignore and edit requirements txt
+[33m3e90054[m Merge pull request #21 from MSU-AI/generate_json_output
+[33mea81f14[m[33m ([m[1;31morigin/generate_json_output[m[33m)[m modified model to only include basic features parameter
+[33md88537c[m redesigns to game cards, switch toggle, and updated menu bar #14
+[33mda27bef[m changes to game details page
+[33m3b45f73[m Insert/update scraping scripts (#17)
+[33mc7c0d0f[m Updated requirements.txt (#18)
+[33ma7fbcd9[m Script to get upcoming game odds (#19)
+[33mee8cd3b[m Function to calculate expected value (#20)
+[33md8008a0[m move requirementst.xt
+[33mcc2cca0[m Merge pull request #16 from MSU-AI/get_game_stats_data
+[33mb7f99ba[m[33m ([m[1;31morigin/get_game_stats_data[m[33m)[m Merge branch 'main' into get_game_stats_data
+[33m55b920e[m added best model weights
+[33mf608d06[m shadcn added to modernize components
+[33m0df937d[m Separated into components for gamedetails, and work in progress on home page
+[33mfaef806[m gamedetails basic outline
+[33mcf6a1b1[m Merge pull request #15 from MSU-AI/feature/websocket_script
+[33m3265134[m[33m ([m[1;31morigin/feature/websocket_script[m[33m)[m script to test api
+[33m0435f80[m Merge pull request #10 from MSU-AI/get_game_stats_data
+[33mdf46f96[m add model and data
+[33m92e5654[m Add meeting notes
+[33mc4484b6[m Initial commit
