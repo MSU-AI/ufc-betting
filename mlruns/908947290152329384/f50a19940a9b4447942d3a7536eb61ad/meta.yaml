@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/ufc-betting/mlruns/908947290152329384/f50a19940a9b4447942d3a7536eb61ad/artifacts
+end_time: 1742071404892
+entry_point_name: ''
+experiment_id: '908947290152329384'
+lifecycle_stage: active
+run_id: f50a19940a9b4447942d3a7536eb61ad
+run_name: window_3game
+run_uuid: f50a19940a9b4447942d3a7536eb61ad
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742070902126
+status: 3
+tags: []
+user_id: harsh

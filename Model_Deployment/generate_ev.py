@@ -8,7 +8,7 @@ from weekly_odds import get_upcoming_games
 from load_data import load_data
 from utils.team_name_converter import convert_team_name
 from pprint import pprint
-from feature_engineering import engineer_features
+from Model_Training.feature_engineering import engineer_features
 from pydantic import BaseModel, Field
 from typing import Dict
 import json

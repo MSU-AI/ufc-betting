@@ -277,7 +277,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Execute each query and save to separate CSV files
 for query, filename in [
-    (create_season_query, os.path.join(current_dir, 'team_game_stats_season.csv')),
+    (create_season_query, os.path.join(current_dir, 'team_game_stats_whole.csv')),
     (create_3game_query, os.path.join(current_dir, 'team_game_stats_3game.csv')),
     (create_5game_query, os.path.join(current_dir, 'team_game_stats_5game.csv')),
     (create_10game_query, os.path.join(current_dir, 'team_game_stats_10game.csv'))
