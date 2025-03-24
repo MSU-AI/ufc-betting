@@ -25,7 +25,7 @@ export default function Header() {
         <span className="text-6xl font-bold">Iverson</span>
       </div>
       <button className="flex items-center justify-center p-2 hover:bg-opacity-80 rounded">
-        <Menu className="h-12 w-12" />
+        <Menu className="h-11 w-11" />
       </button>
     </header>
 
@@ -46,6 +46,3 @@ export default function Header() {
 //     </header>
 //   );
 // };
-
-
-// export default Header;
