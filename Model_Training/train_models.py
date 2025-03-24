@@ -6,46 +6,106 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.calibration import calibration_curve, CalibratedClassifierCV
 from sklearn.metrics import brier_score_loss, roc_auc_score, roc_curve, log_loss
 import xgboost as xgb
-import lightgbm as lgb
 import matplotlib.pyplot as plt
 import joblib
 from feature_engineering import engineer_features
 import json
 from datetime import datetime
 import os
+import mlflow
+import mlflow.sklearn
+from itertools import combinations 
+from pprint import pprint
 
-def load_data(filepath, basic_features_only=False):
-    df = pd.read_csv(filepath)
+def load_data(filepaths, basic_features_only=False):
+    """
+    Load and combine multiple datasets horizontally
     
-    # Convert win/loss to binary
-    df['target'] = (df['wl_home'] == 'W').astype(int)
+    Args:
+        filepaths (list): List of paths to CSV files
+        basic_features_only (bool): Whether to use only basic features
+    """
+    # Load and process each dataset
+    dataframes = []
+    for filepath in filepaths:
+        df = pd.read_csv(filepath)
+        
+        # Convert win/loss to binary
+        df['target'] = (df['wl_home'] == 'W').astype(int)
+        
+        # Basic features (season averages)
+        base_features = [
+            'home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
+            'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
+            'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
+            'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
+        ]
+        
+        if not basic_features_only:
+            # Engineer new features
+            df = engineer_features(df)
+            
+        dataframes.append(df)
     
-    # Basic features (season averages)
-    base_features = [
-        'home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
-        'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
-        'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
-        'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
-    ]
+    # Go through dataframes and append suffix based on filename
+    renamed_dfs = []
+    if len(dataframes) > 1:
+        for i, df in enumerate(dataframes):
+            filepath = filepaths[i]
+            
+        # Determine suffix from filename
+        if '3game' in filepath:
+            suffix = '_3g'
+        elif '5game' in filepath:
+            suffix = '_5g'
+        elif '10game' in filepath:
+            suffix = '_10g'
+        elif 'whole' in filepath:
+            suffix = '_whole'
+        else:
+            raise ValueError(f"Unable to determine time window from filename: {filepath}")
+        
+        # Rename all columns except target (which we'll handle separately)
+        rename_cols = {col: f"{col}{suffix}" for col in df.columns if col != 'target'}
+        df = df.rename(columns=rename_cols)
+        renamed_dfs.append(df)
     
-    if not basic_features_only:
-        # Engineer new features
-        df = engineer_features(df)
+    # Keep target column only from the first dataframe
+    target = renamed_dfs[0]['target']
     
-    # Drop rows with missing values
-    df = df.dropna(subset=df.columns.tolist())
+    # Drop target from all dataframes before combining
+    feature_dfs = [df.drop(columns=['target']) for df in renamed_dfs]
+    
+    # Combine all dataframes horizontally
+    combined_df = pd.concat(feature_dfs, axis=1)
+    
+    # Get indices of rows that have no missing values
+    valid_indices = combined_df.dropna().index
+    
+    # Drop rows with missing values from features
+    combined_df = combined_df.dropna()
+    
+    # Drop the same rows from target using the valid indices
+    target = target.loc[valid_indices]
     
     # Create feature matrix and target vector
-    X = df.drop(columns=['target','game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y = df['target']
+    columns_to_drop = []
+    for col in combined_df.columns:
+        if any(word in col for word in ['target', 'game_id', 'date', 'team_id', 'season', 'wl']):
+            columns_to_drop.append(col)
+    
+    X = combined_df.drop(columns=columns_to_drop)
+    y = target  # Now target will have the same rows as X
     
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
     print(f"Number of features: {len(X.columns)}")
     print("Features used:", X.columns.tolist())
+    print(f"Total number of samples: {len(X)}")
     
     return X, y
 
-def train_evaluate_models(X, y):
+def train_evaluate_models(X, y, selected_windows):
+    """Train and evaluate models without MLflow tracking"""
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
@@ -57,8 +117,7 @@ def train_evaluate_models(X, y):
     # Initialize models
     models = {
         'Logistic Regression': LogisticRegression(random_state=42),
-        'XGBoost': None,  # Will be set after tuning
-        'LightGBM': None  # Will be set after tuning
+        'XGBoost': None
     }
     
     # XGBoost hyperparameter tuning
@@ -69,18 +128,6 @@ def train_evaluate_models(X, y):
         'min_child_weight': [1, 3],
         'subsample': [0.8, 0.9],
         'colsample_bytree': [0.8, 0.9]
-    }
-    
-    # LightGBM hyperparameter tuning
-    lgb_params = {
-        'num_leaves': [15, 31],
-        'learning_rate': [0.01, 0.1],
-        'n_estimators': [100, 200],
-        'min_child_samples': [20, 50],
-        'subsample': [0.8, 0.9],
-        'colsample_bytree': [0.8, 0.9],
-        'reg_alpha': [0.0, 0.1],
-        'reg_lambda': [0.0, 0.1]
     }
     
     # Tune XGBoost
@@ -98,32 +145,14 @@ def train_evaluate_models(X, y):
     print("\nBest XGBoost parameters:", grid_search_xgb.best_params_)
     models['XGBoost'] = grid_search_xgb.best_estimator_
     
-    # Tune LightGBM
-    base_lgb = lgb.LGBMClassifier(random_state=42, verbose=-1)
-    grid_search_lgb = GridSearchCV(
-        estimator=base_lgb,
-        param_grid=lgb_params,
-        cv=5,
-        scoring='neg_log_loss',
-        n_jobs=-1,
-        verbose=1
-    )
-    
-    grid_search_lgb.fit(X_train_scaled, y_train)
-    print("\nBest LightGBM parameters:", grid_search_lgb.best_params_)
-    models['LightGBM'] = grid_search_lgb.best_estimator_
-    
-    # Train and calibrate models
     calibrated_models = {}
     results = {}
     
     for name, model in models.items():
         print(f"\nTraining {name}...")
         
-        # Train base model
+        # Train and calibrate model
         model.fit(X_train_scaled, y_train)
-        
-        # Calibrate model using Platt Scaling
         calibrated = CalibratedClassifierCV(model)
         calibrated.fit(X_train_scaled, y_train)
         calibrated_models[name] = calibrated
@@ -143,6 +172,7 @@ def train_evaluate_models(X, y):
             'y_test': y_test,
             'y_pred_proba': y_pred_proba
         }
+    
     
     return calibrated_models, results
 
@@ -169,7 +199,7 @@ def plot_roc_curves(results):
     
     for name, result in results.items():
         fpr, tpr, _ = roc_curve(result['y_test'], result['y_pred_proba'])
-        plt.plot(fpr, tpr, label=f'{name} (AUC: {result["auc_score"]:.2f})')
+        plt.plot(fpr, tpr, label=f'{name} (AUC: {result["auc_score"]})')
     
     plt.plot([0, 1], [0, 1], linestyle='--', label='Random')
     plt.xlabel('False Positive Rate')
@@ -214,37 +244,41 @@ def save_model(calibrated_model, feature_names):
     }
     joblib.dump(model_data, 'calibrated_model.joblib')
 
+def try_window_combinations():
+    """Try all possible combinations of window sizes and return results"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    available_files = {
+        '3game': os.path.join(base_dir, 'team_game_stats_3game.csv'),
+        '5game': os.path.join(base_dir, 'team_game_stats_5game.csv'),
+        '10game': os.path.join(base_dir, 'team_game_stats_10game.csv'),
+        'whole': os.path.join(base_dir, 'team_game_stats_whole.csv')
+    }
+    
+    windows = ['3game', '5game', '10game', 'whole']
+    all_results = {}
+    
+    # Try combinations of all sizes from 2 to 4
+    for size in range(1, len(windows) + 1):
+        for combo in combinations(windows, size):
+            print(f"\nTrying combination: {combo}")
+            selected_files = [available_files[window] for window in combo]
+            X, y = load_data(selected_files, basic_features_only=False)
+            calibrated_models, results = train_evaluate_models(X, y, combo)
+            all_results[combo] = [results['Logistic Regression']['brier_score'], results['XGBoost']['brier_score']]
+    
+    print(all_results)
+
 def main():
-    # Load data with only basic features
-    X, y = load_data('team_game_stats.csv', basic_features_only=False)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Train and evaluate models
-    calibrated_models, results = train_evaluate_models(X, y)
-    
-    # Print results
-    print("\nModel Performance:")
-    for name, result in results.items():
-        print(f"\n{name}:")
-        print(f"Brier Score: {result['brier_score']:.3f}")
-        print(f"AUC Score: {result['auc_score']:.2f}")
-        print(f"Log Loss: {result['log_loss']:.3f}")
-    
-    # Plot performance curves
+    #train model using only whole season data
+    X, y = load_data([os.path.join(base_dir, 'team_game_stats_whole.csv')], basic_features_only=False)
+    calibrated_models, results = train_evaluate_models(X, y, ['whole'])
     plot_calibration_curves(results)
     plot_roc_curves(results)
     plot_log_loss(results)
-    
-    # Select best model based on Brier score
-    best_model_name = min(results.items(), key=lambda x: x[1]['brier_score'])[0]
-    best_brier_score = results[best_model_name]['brier_score']
-    
-    # Save metrics
-    save_model_metrics(best_model_name, best_brier_score)
-    
-    # Save best model
-    best_model = calibrated_models[best_model_name]
-    joblib.dump(best_model, 'best_model.joblib')
-    print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
+    pprint(results)
 
 if __name__ == "__main__":
     main() 
