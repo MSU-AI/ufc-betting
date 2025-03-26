@@ -1,84 +1,87 @@
-def convert_team_name(full_name):
-    """Convert full team name to team acronym."""
-    
-    # Dictionary mapping various team name formats to their acronyms
-    team_name_mapping = {
-        # Full names to acronyms
-        "Atlanta Hawks": "ATL",
-        "Boston Celtics": "BOS",
-        "Brooklyn Nets": "BRK",
-        "Charlotte Hornets": "CHO",
-        "Chicago Bulls": "CHI",
-        "Cleveland Cavaliers": "CLE",
-        "Dallas Mavericks": "DAL",
-        "Denver Nuggets": "DEN",
-        "Detroit Pistons": "DET",
-        "Golden State Warriors": "GSW",
-        "Houston Rockets": "HOU",
-        "Indiana Pacers": "IND",
-        "Los Angeles Clippers": "LAC",
-        "Los Angeles Lakers": "LAL",
-        "Memphis Grizzlies": "MEM",
-        "Miami Heat": "MIA",
-        "Milwaukee Bucks": "MIL",
-        "Minnesota Timberwolves": "MIN",
-        "New Orleans Pelicans": "NOP",
-        "New York Knicks": "NYK",
-        "Oklahoma City Thunder": "OKC",
-        "Orlando Magic": "ORL",
-        "Philadelphia 76ers": "PHI",
-        "Phoenix Suns": "PHO",
-        "Portland Trail Blazers": "POR",
-        "Sacramento Kings": "SAC",
-        "San Antonio Spurs": "SAS",
-        "Toronto Raptors": "TOR",
-        "Utah Jazz": "UTA",
-        "Washington Wizards": "WAS",
-        
-        # Common variations
-        "Nets": "BRK",
-        "Hornets": "CHO",
-        "Warriors": "GSW",
-        "Clippers": "LAC",
-        "Lakers": "LAL",
-        "Pelicans": "NOP",
-        "Knicks": "NYK",
-        "Thunder": "OKC",
-        "76ers": "PHI",
-        "Sixers": "PHI",
-        "Suns": "PHO",
-        "Trail Blazers": "POR",
-        "Blazers": "POR",
-        "Spurs": "SAS"
-    }
-    
-    try:
-        # First try direct lookup
-        if full_name in team_name_mapping:
-            return team_name_mapping[full_name]
-        
-        # Try case-insensitive lookup
-        full_name_lower = full_name.lower()
-        return next(v for k, v in team_name_mapping.items() 
-                   if k.lower() == full_name_lower)
-            
-    except (KeyError, StopIteration):
-        raise ValueError(f"Could not convert team name: {full_name}")
 
-# Example usage
+team_aliases = {
+    "ATL": ["Atlanta Hawks", "Hawks"],
+    "BOS": ["Boston Celtics", "Celtics"],
+    "BRK": ["Brooklyn Nets", "Nets"],
+    "CHO": ["Charlotte Hornets", "Hornets"],
+    "CHI": ["Chicago Bulls", "Bulls"],
+    "CLE": ["Cleveland Cavaliers", "Cavaliers", "Cavs"],
+    "DAL": ["Dallas Mavericks", "Mavericks"],
+    "DEN": ["Denver Nuggets", "Nuggets"],
+    "DET": ["Detroit Pistons", "Pistons"],
+    "GSW": ["Golden State Warriors", "GS Warriors", "Golden State", "Warriors"],
+    "HOU": ["Houston Rockets", "Rockets"],
+    "IND": ["Indiana Pacers", "Pacers"],
+    "LAC": ["Los Angeles Clippers", "LA Clippers", "Clippers"],
+    "LAL": ["Los Angeles Lakers", "LA Lakers", "Lakers"],
+    "MEM": ["Memphis Grizzlies", "Grizzlies"],
+    "MIA": ["Miami Heat", "Heat"],
+    "MIL": ["Milwaukee Bucks", "Bucks"],
+    "MIN": ["Minnesota Timberwolves", "Timberwolves"],
+    "NOP": ["New Orleans Pelicans", "Pelicans"],
+    "NYK": ["New York Knicks", "NY Knicks", "Knicks"],
+    "OKC": ["Oklahoma City Thunder", "OKC Thunder", "Thunder"],
+    "ORL": ["Orlando Magic", "Magic"],
+    "PHI": ["Philadelphia 76ers", "Philly 76ers", "76ers", "Sixers"],
+    "PHO": ["Phoenix Suns", "Suns"],
+    "POR": ["Portland Trail Blazers", "Trail Blazers", "Blazers", "Portland Blazers"],
+    "SAC": ["Sacramento Kings", "Sacramento"],
+    "SAS": ["San Antonio Spurs", "San Antonio", "Spurs"],
+    "TOR": ["Toronto Raptors", "Toronto", "Raptors"],
+    "UTA": ["Utah Jazz", "Jazz"],
+    "WAS": ["Washington Wizards", "Washington", "Wizards"],
+}
+
+# reverse lookup for aliases to acronyms, in case we need it
+alias_to_acronym = {
+    alias.lower(): code for code, names in team_aliases.items() for alias in names
+}
+
+acronym_to_canonical = {
+    code: names[0] for code, names in team_aliases.items()
+}
+
+def convert_team_name(name):
+    """Convert team name or acronym to acronym or full name."""
+    if not isinstance(name, str):
+        raise ValueError("Input must be a string")
+    name = name.strip()
+    upper = name.upper()
+    if upper in acronym_to_canonical:
+        return acronym_to_canonical[upper]
+    lower = name.lower()
+    if lower in alias_to_acronym:
+        return alias_to_acronym[lower]
+    raise ValueError(f"Could not convert team name or acronym: {name}")
+
+
 if __name__ == "__main__":
-    # Test some conversions
+    # bascically 3 letter acronym converts to full name
+    # every otherthing converts to acronym
     test_names = [
+        "76ers", "Philadelphia 76ers", "PHI",
+        "Toronto", "Raptors", "TOR",
+        "Golden State", "GSW", "Warriors",
+        "Lakers", "LAL", "New York Knicks", "NYK",
         "Boston Celtics",
         "Golden State Warriors",
         "Warriors",
         "LA Lakers",
-        "76ers"
+        "76ers",
+        "Philadelphia 76ers",
+        "Pacers",
+        "Indiana Pacers",
+        "NY Knicks",
+        "Orlando Magic",
+        "Spurs",
+        "Toronto Raptors",
+        "PHI",
+        "TOR"
     ]
-    
+
     for name in test_names:
         try:
-            acronym = convert_team_name(name)
-            print(f"{name} -> {acronym}")
+            result = convert_team_name(name)
+            print(f"{name} -> {result}")
         except ValueError as e:
             print(f"Error: {e}")
