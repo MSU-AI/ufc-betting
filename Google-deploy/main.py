@@ -5,10 +5,6 @@ import joblib
 from results_insert import insert_results
 from generate_ev import run_inference_pipeline
 
-# TODO: commands to deploy model
-# gcloud builds submit --tag gcr.io/civil-cascade-454901-m2/inference
-# gcloud run deploy --image gcr.io/civil-cascade-454901-m2/inference --platform managed
-
 
 def create_app():
     app = Flask(__name__)
