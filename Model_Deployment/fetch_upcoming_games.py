@@ -57,8 +57,8 @@ def extract_upcoming_games(data):
                     upcoming_games.append({
                         "game_id": game["gameId"],
                         "date": game_date.strftime("%Y-%m-%d"),
-                        "home_team": game["homeTeam"]["teamName"],
-                        "away_team": game["awayTeam"]["teamName"],
+                        "home_team": f"{game['homeTeam']['teamCity']} {game['homeTeam']['teamName']}",
+                        "away_team": f"{game['awayTeam']['teamCity']} {game['awayTeam']['teamName']}",
                         "arena": game["arenaName"],
                         "game_time": game["gameDateTimeUTC"]
                     })
