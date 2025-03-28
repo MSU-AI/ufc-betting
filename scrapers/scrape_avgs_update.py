@@ -82,7 +82,6 @@ def update_scrape():
             update_doc["_id"] = document["_id"]
 
             collection.update_one({"_id": document["_id"]}, {"$set": update_doc})
-            print("Doc updated succesfully")
         else:
             print(f"Doc not found")
 

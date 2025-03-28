@@ -26,7 +26,7 @@ class NBATeam(Enum):
     ORL = "Magic"
     PHI = "76ers"
     PHO = "Suns"
-    POR = "Trail Blazers"
+    POR = "Blazers"  # This has to be Blazers because we're just looking at the last word to match
     SAC = "Kings"
     SAS = "Spurs"
     TOR = "Raptors"

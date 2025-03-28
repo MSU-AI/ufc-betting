@@ -9,7 +9,7 @@ from pprint import pprint
 load_dotenv()
 api_key = os.getenv("ODDS_API")
 # TODO: del later
-print("API key loaded:", api_key)
+print("API key loaded")
 
 sport = "basketball_nba"
 regions = "us"

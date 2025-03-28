@@ -58,10 +58,6 @@ def update_recent_games():
                     }
 
                     collection.insert_one(boxscore_stats)
-                    print(
-                        f"Inserted game for {boxscore_stats['team']} on {boxscore_stats['date']}"
-                    )
-
             else:
                 print(f"No stats table found for {team.value}. Skipping update.")
         else:

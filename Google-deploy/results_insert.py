@@ -6,6 +6,9 @@ import sys
 from typing import List, Dict
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
 from pymongo.operations import ReplaceOne
+from datetime import datetime, timedelta
+from dateutil import parser
+from typing import Tuple
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -58,6 +61,9 @@ def insert_results(results: List[Dict]):
         home_team = game_info["home_team"]
         away_team = game_info["away_team"]
         commence_time = game_info["commence_time"]
+        commence_time = parser.isoparse(
+            commence_time
+        )  # Force commence_time to be a datetime
         home_win_prob = game_info["model_probabilities"]["home_win"]
         away_win_prob = game_info["model_probabilities"]["away_win"]
 
@@ -91,12 +97,32 @@ def insert_results(results: List[Dict]):
                 "away_ev": away_ev,
             }
 
-            filter_criteria = {
-                "home_code": home_code,
-                "away_code": away_code,
-                "commence_time": commence_time,
-                "bookmaker": bookmaker_name,
-            }
+            time_window_start = commence_time - timedelta(hours=2)
+            time_window_end = commence_time + timedelta(hours=2)
+
+            existing_game = collection.find_one(
+                {
+                    "home_code": home_code,
+                    "away_code": away_code,
+                    "bookmaker": bookmaker_name,
+                    "commence_time": {
+                        "$gte": time_window_start,
+                        "$lte": time_window_end,
+                    },
+                }
+            )
+
+            if existing_game:
+                print("Existing game found!")
+                filter_criteria = {"_id": existing_game["_id"]}
+                game_result["commence_time"] = existing_game["commence_time"]
+            else:
+                filter_criteria = {
+                    "home_code": home_code,
+                    "away_code": away_code,
+                    "commence_time": commence_time,
+                    "bookmaker": bookmaker_name,
+                }
 
             bulk_results.append(ReplaceOne(filter_criteria, game_result, upsert=True))
 
