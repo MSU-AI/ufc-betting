@@ -35,13 +35,20 @@ NBA_TEAM_IDS = {
 }
 
 
+def get_full_team_name(city, name):
+    """Normalize specific team names"""
+    if city == "LA" and name == "Clippers":
+        return "Los Angeles Clippers"
+    return f"{city} {name}"
+
+
 def extract_upcoming_games(data):
     upcoming_games = []
     today = datetime.utcnow().date()
 
     if "leagueSchedule" in data and "gameDates" in data["leagueSchedule"]:
         for game_date_entry in data["leagueSchedule"]["gameDates"]:
-            for game in game_date_entry.get("games", []):  
+            for game in game_date_entry.get("games", []):
                 try:
                     game_date = datetime.strptime(game["gameDateUTC"], "%Y-%m-%dT%H:%M:%SZ").date()
                     # Skip past games
@@ -57,8 +64,8 @@ def extract_upcoming_games(data):
                     upcoming_games.append({
                         "game_id": game["gameId"],
                         "date": game_date.strftime("%Y-%m-%d"),
-                        "home_team": f"{game['homeTeam']['teamCity']} {game['homeTeam']['teamName']}",
-                        "away_team": f"{game['awayTeam']['teamCity']} {game['awayTeam']['teamName']}",
+                        "home_team": get_full_team_name(game['homeTeam']['teamCity'], game['homeTeam']['teamName']),
+                        "away_team": get_full_team_name(game['awayTeam']['teamCity'], game['awayTeam']['teamName']),
                         "arena": game["arenaName"],
                         "game_time": game["gameDateTimeUTC"]
                     })
