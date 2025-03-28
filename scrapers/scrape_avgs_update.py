@@ -4,8 +4,6 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 from utils.team_enum import NBATeam
-import time
-import schedule
 
 # MongDB connection
 load_dotenv()
@@ -84,14 +82,8 @@ def update_scrape():
             update_doc["_id"] = document["_id"]
 
             collection.update_one({"_id": document["_id"]}, {"$set": update_doc})
-            print("Doc updated succesfully")
         else:
             print(f"Doc not found")
 
 
 update_scrape()  # Run immediately
-schedule.every(1).hour.do(update_scrape)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)

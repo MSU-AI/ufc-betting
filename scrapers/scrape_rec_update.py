@@ -3,8 +3,6 @@ from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
-import time
-import schedule
 from utils.team_enum import NBATeam
 
 # MongoDB connection
@@ -60,10 +58,6 @@ def update_recent_games():
                     }
 
                     collection.insert_one(boxscore_stats)
-                    print(
-                        f"Inserted game for {boxscore_stats['team']} on {boxscore_stats['date']}"
-                    )
-
             else:
                 print(f"No stats table found for {team.value}. Skipping update.")
         else:
@@ -74,8 +68,3 @@ def update_recent_games():
 
 # Run immediately, then schedule hourly updates
 update_recent_games()
-schedule.every(1).hour.do(update_recent_games)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
