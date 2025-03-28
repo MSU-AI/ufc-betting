@@ -49,6 +49,20 @@ def get_team_code(full_team_name: str) -> str:
     return None
 
 
+def calculate_kelly(p_model: float, odds: int) -> float:
+    # Convert odds to decimal odds
+    decimal_odds = 0
+    if odds < 0:  # 'minus' odds
+        decimal_odds = (100 / -(odds)) + 1
+    else:
+        decimal_odds = (odds / 100) + 1
+
+    b = decimal_odds - 1
+    q = 1 - p_model
+    kelly = (b * p_model - q) / b if b != 0 else 0
+    return round(kelly, 4)  # Neg kelly means to take the other side
+
+
 def insert_results(results: List[Dict]):
     collection = connect_to_mongodb()
     if collection is None:
@@ -82,6 +96,9 @@ def insert_results(results: List[Dict]):
             home_ev = bookmaker["expected_value"]["home"]
             away_ev = bookmaker["expected_value"]["away"]
 
+            home_kelly = calculate_kelly(home_win_prob, home_odds)
+            away_kelly = calculate_kelly(away_win_prob, away_odds)
+
             game_result = {
                 "home_team": home_team,
                 "away_team": away_team,
@@ -95,6 +112,8 @@ def insert_results(results: List[Dict]):
                 "away_odds": away_odds,
                 "home_ev": home_ev,
                 "away_ev": away_ev,
+                "home_kelly": home_kelly,
+                "away_kelly": away_kelly,
             }
 
             time_window_start = commence_time - timedelta(hours=2)
