@@ -12,6 +12,17 @@ cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
 tables = cur.fetchall()
 print("Available tables:", tables)
 
+
+print("Player table schema:")
+# Get schema of the Player table
+cur.execute("PRAGMA table_info(Player)")
+schema = cur.fetchall()
+
+for column in schema:
+    print(f"Column: {column[1]}, Type: {column[2]}")
+
+
+print("Game table schema:")
 # Get schema of the Game table
 cur.execute("PRAGMA table_info(Game)")
 schema = cur.fetchall()
@@ -221,7 +232,15 @@ ORDER BY g.game_date;
 """
 
 create_season_query = """
-WITH TeamAverages AS (
+WITH SeasonDates AS (
+    SELECT 
+        season_id,
+        MIN(game_date) as season_start,
+        MAX(game_date) as season_end
+    FROM game 
+    GROUP BY season_id
+),
+TeamAverages AS (
     SELECT 
         game_id,
         team,
@@ -259,11 +278,13 @@ SELECT
     aa.avg_fg3_pct AS away_avg_fg3_pct,
     aa.avg_ft_pct AS away_avg_ft_pct
 FROM game as g
+JOIN SeasonDates sd ON g.season_id = sd.season_id
 LEFT JOIN TeamAverages ha 
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28'
+WHERE g.game_date >= sd.season_start
+    AND g.game_date <= sd.season_end
 ORDER BY g.game_date;
 """
 
