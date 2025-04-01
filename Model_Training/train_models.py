@@ -37,16 +37,30 @@ def load_data(filepath, basic_features_only=False):
     
     # Drop rows with missing values
     df = df.dropna(subset=df.columns.tolist())
+
     
+    # defining train dataset
+    train_data = df[df['season'] < 22021]
+    
+    # defining val dataset
+    val_data = df[df['season'] == 22021]
+    
+    # defining test dataset
+    test_data = df[df['season'] > 22021]
     # Create feature matrix and target vector
-    X = df.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y = df['target']
+    X_train = train_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_train = train_data['target']
+    X_val = val_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_val = val_data['target']
+    X_test = test_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_test = test_data['target']
+
     
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
-    print(f"Number of features: {len(X.columns)}")
-    print("Features used:", X.columns.tolist())
+    print(f"Number of features: {len(X_train.columns)}")
+    print("Features used:", X_train.columns.tolist())
     
-    return X, y
+    return X_train, y_train, X_val, y_val, X_test, y_test, test_data
 
 class FFNClassifier(nn.Module):
     def __init__(self, input_dim, architecture):
@@ -122,10 +136,7 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
     model.load_state_dict(best_state)
     return model
 
-def train_evaluate_models(X, y):
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     
     # Scale features
     scaler = StandardScaler()
@@ -137,12 +148,12 @@ def train_evaluate_models(X, y):
     models = {
         'Logistic Regression': LogisticRegression(random_state=42),
         'XGBoost': None,  # Will be set after tuning
-        'FFN_Small': FFNClassifier(X.shape[1], [64, 32]),
-        'FFN_Medium': FFNClassifier(X.shape[1], [128, 64, 32]),
-        'FFN_Large': FFNClassifier(X.shape[1], [256, 128, 64, 32])
+        'FFN_Small': FFNClassifier(X_train.shape[1], [64, 32]),
+        'FFN_Medium': FFNClassifier(X_train.shape[1], [128, 64, 32]),
+        'FFN_Large': FFNClassifier(X_train.shape[1], [256, 128, 64, 32])
     }
     
-    # XGBoost hyperparameter tuning
+    # Define parameter grid
     xgb_params = {
         'max_depth': [3, 4, 5],
         'learning_rate': [0.01, 0.1],
@@ -151,21 +162,53 @@ def train_evaluate_models(X, y):
         'subsample': [0.8, 0.9],
         'colsample_bytree': [0.8, 0.9]
     }
-    
-    # Tune XGBoost
-    base_xgb = xgb.XGBClassifier(random_state=42, eval_metric='logloss')
-    grid_search_xgb = GridSearchCV(
-        estimator=base_xgb,
-        param_grid=xgb_params,
-        cv=5,
-        scoring='neg_log_loss',
-        n_jobs=-1,
-        verbose=1
-    )
-    
-    grid_search_xgb.fit(X_train_scaled, y_train)
-    print("\nBest XGBoost parameters:", grid_search_xgb.best_params_)
-    models['XGBoost'] = grid_search_xgb.best_estimator_
+
+    # Initialize variables to store the best parameters and score
+    best_params = None
+    best_score = float('inf')
+
+    # Iterate over all combinations of parameters
+    for max_depth in xgb_params['max_depth']:
+        for learning_rate in xgb_params['learning_rate']:
+            for n_estimators in xgb_params['n_estimators']:
+                for min_child_weight in xgb_params['min_child_weight']:
+                    for subsample in xgb_params['subsample']:
+                        for colsample_bytree in xgb_params['colsample_bytree']:
+                            # Set parameters
+                            params = {
+                                'max_depth': max_depth,
+                                'learning_rate': learning_rate,
+                                'n_estimators': n_estimators,
+                                'min_child_weight': min_child_weight,
+                                'subsample': subsample,
+                                'colsample_bytree': colsample_bytree,
+                                'random_state': 42,
+                                'eval_metric': 'logloss'
+                            }
+                            
+                            # Initialize and train model
+                            model = xgb.XGBClassifier(**params)
+                            model.fit(
+                                X_train_scaled, y_train,
+                                eval_set=[(X_val_scaled, y_val)],
+                                verbose=False
+                            )
+                            
+                            # Evaluate model
+                            y_val_pred = model.predict_proba(X_val_scaled)[:, 1]
+                            score = log_loss(y_val, y_val_pred)
+                            
+                            # Update best parameters if current score is better
+                            if score < best_score:
+                                best_score = score
+                                best_params = params
+
+    print("\nBest XGBoost parameters:", best_params)
+    print("Best validation log loss:", best_score)
+
+    # Train the final model with the best parameters
+    best_model = xgb.XGBClassifier(**best_params)
+    models['XGBoost'] = best_model
     
     # Train and calibrate models
     calibrated_models = {}
@@ -279,10 +322,10 @@ def main():
     # Load data
     base_path = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(base_path, 'team_game_stats_season.csv')
-    X, y = load_data(data_path, basic_features_only=False)
+    X_train, y_train, X_val, y_val, X_test, y_test, test_data = load_data(data_path, basic_features_only=False)
     
     # Train and evaluate models
-    calibrated_models, results = train_evaluate_models(X, y)
+    calibrated_models, results = train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test)
     
     # Print results
     print("\nModel Performance:")
@@ -308,6 +351,10 @@ def main():
     best_model = calibrated_models[best_model_name]
     joblib.dump(best_model, 'best_model.joblib')
     print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
+    
+    #save test data
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data.to_csv(os.path.join(current_dir, 'test_data.csv'), index=False)
 
 if __name__ == "__main__":
     main() 
