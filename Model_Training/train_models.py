@@ -39,7 +39,7 @@ def load_data(filepath, basic_features_only=False):
     df = df.dropna(subset=df.columns.tolist())
     
     # Create feature matrix and target vector
-    X = df.drop(columns=['target','game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    X = df.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
     y = df['target']
     
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
@@ -177,6 +177,8 @@ def train_evaluate_models(X, y):
         if isinstance(model, FFNClassifier):
             # Train neural network
             model = train_neural_net(model, X_train_scaled, y_train, X_val_scaled, y_val)
+            # Add neural network to calibrated_models
+            calibrated_models[name] = model
             # Get predictions
             model.eval()
             with torch.no_grad():
