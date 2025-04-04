@@ -1,10 +1,17 @@
 import pandas as pd
 import numpy as np
 import joblib
+import warnings
 from feature_engineering import engineer_features
 from datetime import datetime
 from team_name_converter import convert_team_name
 import json
+from train_models import FFNClassifier
+
+
+warnings.filterwarnings('ignore', category=FutureWarning)  # For pandas FutureWarnings
+warnings.filterwarnings('ignore', category=UserWarning)    # For UserWarnings
+warnings.filterwarnings('ignore', category=RuntimeWarning) # For RuntimeWarnings
 
 def convert_american_to_decimal(american_odds):
     """Convert American odds to decimal odds."""
@@ -33,6 +40,9 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     
     print(f"Initial data shapes - Odds: {odds_df.shape}, Stats: {stats_df.shape}")
     
+    # Convert win/loss to binary
+    stats_df['target'] = (stats_df['wl_home'] == 'W').astype(int)
+    
     # Convert date columns to datetime# Remove time information
     odds_df['date'] = pd.to_datetime(odds_df['date']).dt.date  # Remove time information
     stats_df['date'] = pd.to_datetime(stats_df['date']).dt.date  # Remove time information
@@ -50,6 +60,9 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     # Sort data by date
     odds_df = odds_df.sort_values('date')
     stats_df = stats_df.sort_values('date')
+    
+    #remove games from odds_df that before the first game in stats_df
+    odds_df = odds_df[odds_df['date'] >= stats_df['date'].min()]
     
     # Process each game
     print("\nStarting game-by-game analysis...")
@@ -78,7 +91,7 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
             
         # Prepare features for prediction
         features = engineer_features(game_stats.copy())
-        features = features.drop(columns=['wl_home', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+        features = features.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
         
         # Get model prediction
         home_win_prob = model.predict_proba(features)[0][1]
@@ -92,11 +105,15 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
         home_kelly_fraction = kelly_criterion(home_win_prob, home_decimal_odds)
         away_kelly_fraction = kelly_criterion(away_win_prob, away_decimal_odds)
         
+        # Skip if Kelly fractions are below threshold
+        min_kelly_threshold = 0.05
+        if home_kelly_fraction < min_kelly_threshold and away_kelly_fraction < min_kelly_threshold:
+            continue
+            
         # Calculate bet size for both teams (capped at current max_bet)
         current_max_bet = bankroll * max_bet_percentage  # Dynamic max bet based on current bankroll
-        home_bet_size = min(bankroll * home_kelly_fraction * 1/8, current_max_bet)
-        away_bet_size = min(bankroll * away_kelly_fraction * 1/8, current_max_bet)
-        
+        home_bet_size = min(bankroll * home_kelly_fraction * 1/8, 20)
+        away_bet_size = min(bankroll * away_kelly_fraction * 1/8, 20)
         # Skip if both bet sizes are too small
         if home_bet_size < 1 and away_bet_size < 1:
             continue
@@ -211,7 +228,7 @@ if __name__ == "__main__":
     results = backtest_kelly(
         model_path='best_model.joblib',
         odds_data_path='Model_Training/processed_odds_data.csv',
-        stats_data_path='Model_Training/team_game_stats_season.csv',
+        stats_data_path='Model_Training/test_data.csv',
         max_bet_percentage=0.05
     )
     

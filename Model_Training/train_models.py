@@ -31,22 +31,29 @@ def load_data(filepath, basic_features_only=False):
         'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
     ]
     
+    #convert date to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # defining train dataset - use data before 2021 season start (Dec 22, 2020)
+    train_data = df[df['date'] < '2020-12-22']
+    
+    # defining val dataset - 2021 season (Dec 22, 2020 - end of season)
+    val_data = df[(df['date'] >= '2020-12-22') & (df['date'] < '2021-10-01')]
+    
+    # defining test dataset - after 2021 season
+    test_data = df[df['date'] >= '2021-10-01']
+
     if not basic_features_only:
-        # Engineer new features
-        df = engineer_features(df)
+        # Engineer new features for each dataset separately
+        train_data = engineer_features(train_data)
+        val_data = engineer_features(val_data)
+        test_data = engineer_features(test_data)
     
     # Drop rows with missing values
-    df = df.dropna(subset=df.columns.tolist())
+    train_data = train_data.dropna(subset=train_data.columns.tolist())
+    val_data = val_data.dropna(subset=val_data.columns.tolist())
+    test_data = test_data.dropna(subset=test_data.columns.tolist())
 
-    
-    # defining train dataset
-    train_data = df[df['season'] < 22021]
-    
-    # defining val dataset
-    val_data = df[df['season'] == 22021]
-    
-    # defining test dataset
-    test_data = df[df['season'] > 22021]
     # Create feature matrix and target vector
     X_train = train_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
     y_train = train_data['target']
@@ -55,7 +62,6 @@ def load_data(filepath, basic_features_only=False):
     X_test = test_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
     y_test = test_data['target']
 
-    
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
     print(f"Number of features: {len(X_train.columns)}")
     print("Features used:", X_train.columns.tolist())
@@ -84,6 +90,37 @@ class FFNClassifier(nn.Module):
     
     def forward(self, x):
         return self.network(x)
+
+    def predict_proba(self, X):
+        """
+        Predict class probabilities for input X
+        
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Input samples
+            
+        Returns:
+        --------
+        array-like of shape (n_samples, 2)
+            Returns predicted probabilities for both classes [P(y=0), P(y=1)]
+        """
+        #convert X to numpy array
+        X = X.to_numpy()
+        
+        # Convert input to tensor if not already
+        if not isinstance(X, torch.Tensor):
+            X = torch.FloatTensor(X)
+            
+        # Set model to evaluation mode
+        self.eval()
+        
+        # Get predictions
+        with torch.no_grad():
+            probas = self.forward(X).numpy()
+        
+        # Return probabilities for both classes [P(y=0), P(y=1)]
+        return np.column_stack([1 - probas, probas])
 
 def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
     # Convert to PyTorch tensors
@@ -155,12 +192,9 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     
     # Define parameter grid
     xgb_params = {
-        'max_depth': [3, 4, 5],
+        'max_depth': [5, 10, 15],
         'learning_rate': [0.01, 0.1],
-        'n_estimators': [100, 200],
-        'min_child_weight': [1, 3],
-        'subsample': [0.8, 0.9],
-        'colsample_bytree': [0.8, 0.9]
+        'n_estimators': [100, 200, 500],
     }
 
     # Initialize variables to store the best parameters and score
@@ -171,37 +205,31 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     for max_depth in xgb_params['max_depth']:
         for learning_rate in xgb_params['learning_rate']:
             for n_estimators in xgb_params['n_estimators']:
-                for min_child_weight in xgb_params['min_child_weight']:
-                    for subsample in xgb_params['subsample']:
-                        for colsample_bytree in xgb_params['colsample_bytree']:
-                            # Set parameters
-                            params = {
-                                'max_depth': max_depth,
-                                'learning_rate': learning_rate,
-                                'n_estimators': n_estimators,
-                                'min_child_weight': min_child_weight,
-                                'subsample': subsample,
-                                'colsample_bytree': colsample_bytree,
-                                'random_state': 42,
-                                'eval_metric': 'logloss'
-                            }
+                # Set parameters
+                params = {
+                    'max_depth': max_depth,
+                    'learning_rate': learning_rate,
+                    'n_estimators': n_estimators,
+                    'random_state': 42,
+                    'eval_metric': 'logloss'
+                }
                             
                             # Initialize and train model
-                            model = xgb.XGBClassifier(**params)
-                            model.fit(
-                                X_train_scaled, y_train,
-                                eval_set=[(X_val_scaled, y_val)],
-                                verbose=False
-                            )
-                            
-                            # Evaluate model
-                            y_val_pred = model.predict_proba(X_val_scaled)[:, 1]
-                            score = log_loss(y_val, y_val_pred)
-                            
-                            # Update best parameters if current score is better
-                            if score < best_score:
-                                best_score = score
-                                best_params = params
+                model = xgb.XGBClassifier(**params)
+                model.fit(
+                    X_train_scaled, y_train,
+                    eval_set=[(X_val_scaled, y_val)],
+                    verbose=False
+                )
+                
+                # Evaluate model
+                y_val_pred = model.predict_proba(X_val_scaled)[:, 1]
+                score = log_loss(y_val, y_val_pred)
+                
+                # Update best parameters if current score is better
+                if score < best_score:
+                    best_score = score
+                    best_params = params
 
     print("\nBest XGBoost parameters:", best_params)
     print("Best validation log loss:", best_score)
@@ -299,11 +327,11 @@ def plot_log_loss(results):
     plt.savefig('log_loss.png')
     plt.close()
 
-def save_model_metrics(best_model_name, best_brier_score):
-    """Save best model type and Brier score"""
+def save_model_metrics(best_model_name, best_auc_score):
+    """Save best model type and AUC score"""
     metrics = {
         'model_type': best_model_name,
-        'brier_score': float(best_brier_score),
+        'auc_score': float(best_auc_score),
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -340,12 +368,12 @@ def main():
     plot_roc_curves(results)
     plot_log_loss(results)
     
-    # Select best model based on Brier score
-    best_model_name = min(results.items(), key=lambda x: x[1]['brier_score'])[0]
-    best_brier_score = results[best_model_name]['brier_score']
+    # Select best model based on AUC score
+    best_model_name = max(results.items(), key=lambda x: x[1]['auc_score'])[0]
+    best_auc_score = results[best_model_name]['auc_score']
     
     # Save metrics
-    save_model_metrics(best_model_name, best_brier_score)
+    save_model_metrics(best_model_name, best_auc_score)
     
     # Save best model
     best_model = calibrated_models[best_model_name]

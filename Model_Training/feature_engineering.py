@@ -22,13 +22,13 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
             # Create home team rolling features
             home_roll_col = f'home_{stat}_last_{window}'
             df[home_roll_col] = df.groupby(['team_id_home', 'season'])[home_col].transform(
-                lambda x: x.rolling(window=window, min_periods=1).mean()
+                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
             )
             
             # Create away team rolling features
             away_roll_col = f'away_{stat}_last_{window}'
             df[away_roll_col] = df.groupby(['team_id_away', 'season'])[away_col].transform(
-                lambda x: x.rolling(window=window, min_periods=1).mean()
+                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
             )
             
             # Create differential features
@@ -37,13 +37,13 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
             
             rolling_features.extend([home_roll_col, away_roll_col, diff_col])
             
-        # Create rolling win percentage features
+        # Create rolling win percentage features using shifted target
         df['home_winpct_last_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['target'].transform(
-            lambda x: x.rolling(window=window, min_periods=1).mean()
+            lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
         )
         
         df['away_winpct_last_{}'.format(window)] = df.groupby(['team_id_away', 'season'])['target'].transform(
-            lambda x: x.rolling(window=window, min_periods=1).mean()
+            lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
         )
         
         rolling_features.extend([
@@ -53,13 +53,13 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
         
         # Create momentum features (trend in performance)
         df['home_momentum_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['home_avg_pts'].transform(
-            lambda x: x.rolling(window=window, min_periods=1).apply(
+            lambda x: x.shift(1).rolling(window=window, min_periods=1).apply(
                 lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0
             )
         )
         
         df['away_momentum_{}'.format(window)] = df.groupby(['team_id_away', 'season'])['away_avg_pts'].transform(
-            lambda x: x.rolling(window=window, min_periods=1).apply(
+            lambda x: x.shift(1).rolling(window=window, min_periods=1).apply(
                 lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0
             )
         )
@@ -185,6 +185,7 @@ def create_composite_metrics(df):
 
 def engineer_features(df):
     """Main function to engineer all features."""
+    create_rolling_features(df)
     create_offensive_ratings(df)
     create_efficiency_differences(df)
     create_basic_differentials(df)
@@ -194,5 +195,7 @@ def engineer_features(df):
     create_efficiency_metrics(df)
     create_performance_differentials(df)
     create_composite_metrics(df)
+    #fill na with 0
+    df = df.fillna(0)
 
     return df

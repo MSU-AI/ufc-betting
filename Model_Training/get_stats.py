@@ -242,7 +242,8 @@ WITH SeasonDates AS (
     SELECT 
         season_id,
         MIN(game_date) as season_start,
-        MAX(game_date) as season_end
+        MAX(game_date) as season_end,
+        strftime('%Y', MIN(game_date)) || '-12-15' as season_midpoint  -- Using Dec 15th as cutoff
     FROM game 
     WHERE game_date >= '2015-10-27'
     GROUP BY season_id
@@ -294,9 +295,10 @@ LEFT JOIN TeamAverages ha
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= sd.season_start
+WHERE g.game_date >= sd.season_midpoint  -- Using Dec 15th cutoff
     AND g.game_date <= sd.season_end
-    AND g.game_date >= '2015-10-27' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
+    AND g.game_date >= '2015-10-27' 
+    AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
