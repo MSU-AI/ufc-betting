@@ -1,10 +1,13 @@
 import os
 import requests
 import pymongo
-from dotenv import load_dotenv
+import logging
 from datetime import datetime
 
-load_dotenv(".env.local")
+# from dotenv import load_dotenv
+# load_dotenv(".env.local")
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 DB_NAME = "nba_stats"
@@ -20,7 +23,7 @@ def connect_to_mongo():
 def fetch_nba_schedule():
     response = requests.get(NBA_SCHEDULE_URL)
     if response.status_code != 200:
-        print("Failed to fetch NBA schedule:", response.status_code)
+        logging.error("Failed to fetch NBA schedule: %s", response.status_code)
         return None
     return response.json()
 
@@ -75,32 +78,29 @@ def extract_h2h_records(data):
                     h2h_records[loser][winner]["losses"] += 1
 
                 except KeyError as e:
-                    print(f"Missing key: {e}")
+                    logging.error("Missing key: %s", e)
                 except ValueError as e:
-                    print(f"Date parsing error: {e}")
+                    logging.error("Date parsing error: %s", e)
 
     return h2h_records
-
 
 def store_h2h_in_mongo(h2h_data):
     """Inserts or updates H2H records in MongoDB."""
     collection = connect_to_mongo()
 
     if not h2h_data:
-        print("No H2H records found.")
+        logging.warning("No H2H records found.")
         return
 
     for team, opponents in h2h_data.items():
         existing_record = collection.find_one({"team": team})
-
         if existing_record:
             if existing_record["h2h"] != opponents:
                 collection.update_one({"team": team}, {"$set": {"h2h": opponents}})
-                print(f"Updated H2H record for {team}")
+                logging.info("Updated H2H record for %s", team)
         else:
             collection.insert_one({"team": team, "h2h": opponents})
-            print(f"Inserted H2H record for {team}")
-
+            logging.info("Inserted H2H record for %s", team)
 
 def main():
     data = fetch_nba_schedule()
@@ -108,6 +108,6 @@ def main():
         h2h_data = extract_h2h_records(data)
         store_h2h_in_mongo(h2h_data)
 
-
 if __name__ == "__main__":
     main()
+
