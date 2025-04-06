@@ -9,6 +9,7 @@ import json
 from train_models import FFNClassifier
 from train_models import ResFFNClassifier
 from train_models import ResidualBlock
+import os
 
 
 
@@ -32,8 +33,7 @@ def kelly_criterion(probability, decimal_odds):
 
 def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percentage=0.05, 
                    min_kelly_threshold=0.05, min_ev_threshold=0.1, use_thresholds=True,
-                   kelly_fraction_multiplier=0.25, use_confidence_scaling=False,
-                   min_confidence_threshold=0.05):
+                   kelly_fraction_multiplier=0.25):
     """Run backtesting using Kelly Criterion for bankroll management.
     
     Parameters:
@@ -45,8 +45,6 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     - min_ev_threshold: Minimum expected value to place a bet
     - use_thresholds: Whether to apply minimum Kelly and EV thresholds
     - kelly_fraction_multiplier: Fraction of Kelly to bet
-    - use_confidence_scaling: Whether to scale bets based on confidence
-    - min_confidence_threshold: Minimum confidence level to place a bet
     """
     print("\nStarting backtest execution...")
     
@@ -141,41 +139,20 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
             home_viable = home_kelly_fraction > 0 and home_ev > 0
             away_viable = away_kelly_fraction > 0 and away_ev > 0
         
-        # Apply confidence threshold if enabled
-        if use_confidence_scaling:
-            if home_viable and home_confidence < min_confidence_threshold:
-                home_viable = False
-            if away_viable and away_confidence < min_confidence_threshold:
-                away_viable = False
-        
         if not (home_viable or away_viable):
             continue
             
         # Calculate bet size for both teams (capped at current max_bet)
         current_max_bet = bankroll * max_bet_percentage  # Dynamic max bet based on current bankroll
         
-        # Apply confidence scaling if enabled
-        if use_confidence_scaling:
-            home_conf_multiplier = home_confidence if home_viable else 0
-            away_conf_multiplier = away_confidence if away_viable else 0
-            
-            home_bet_size = 0 if not home_viable else min(
-                bankroll * home_kelly_fraction * kelly_fraction_multiplier * home_conf_multiplier, 
-                current_max_bet
-            )
-            away_bet_size = 0 if not away_viable else min(
-                bankroll * away_kelly_fraction * kelly_fraction_multiplier * away_conf_multiplier, 
-                current_max_bet
-            )
-        else:
-            home_bet_size = 0 if not home_viable else min(
-                bankroll * home_kelly_fraction * kelly_fraction_multiplier, 
-                current_max_bet
-            )
-            away_bet_size = 0 if not away_viable else min(
-                bankroll * away_kelly_fraction * kelly_fraction_multiplier, 
-                current_max_bet
-            )
+        home_bet_size = 0 if not home_viable else min(
+            bankroll * home_kelly_fraction * kelly_fraction_multiplier, 
+            current_max_bet
+        )
+        away_bet_size = 0 if not away_viable else min(
+            bankroll * away_kelly_fraction * kelly_fraction_multiplier, 
+            current_max_bet
+        )
         
         # Skip if both bet sizes are too small
         if home_bet_size < 1 and away_bet_size < 1:
@@ -222,7 +199,7 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
         max_bankroll = max(max_bankroll, bankroll)
         min_bankroll = min(min_bankroll, bankroll)
         
-        # Record bet (update to include confidence metrics)
+        # Record bet (keep confidence metrics for information only)
         bet_history.append({
             'date': game['date'],
             'team': game['team'],
@@ -286,128 +263,158 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     }
 
 if __name__ == "__main__":
-    print("Starting Kelly Criterion confidence scaling test...")
+    print("Starting Kelly Criterion parameter test...")
     
-    # Define confidence scaling test parameters
-    confidence_test_params = [
-        # Baseline without confidence scaling for comparison
-        {'max_bet_percentage': 0.05, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.25, 'use_confidence_scaling': False,
-         'test_name': 'Baseline - No Confidence Scaling'},
+    # Define test parameters
+    test_params = [
+        {'max_bet_percentage': 0.02, 'use_thresholds': False, 'min_kelly_threshold': 0.05, 
+         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.05, 'test_name': 'Conservative No Threshold'},
          
-        # Test various confidence thresholds
-        {'max_bet_percentage': 0.05, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.25, 'use_confidence_scaling': True,
-         'min_confidence_threshold': 0.05, 'test_name': 'Confidence Threshold 0.05'},
+        {'max_bet_percentage': 0.02, 'use_thresholds': True, 'min_kelly_threshold': 0.1, 
+         'min_ev_threshold': 0.15, 'kelly_fraction_multiplier': 0.05, 'test_name': 'Conservative With Threshold'},
         
-        {'max_bet_percentage': 0.05, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.25, 'use_confidence_scaling': True,
-         'min_confidence_threshold': 0.1, 'test_name': 'Confidence Threshold 0.10'},
+        {'max_bet_percentage': 0.01, 'use_thresholds': False, 'min_kelly_threshold': 0.05, 
+         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.02, 'test_name': 'Ultra Conservative No Threshold'},
         
-        {'max_bet_percentage': 0.05, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.25, 'use_confidence_scaling': True,
-         'min_confidence_threshold': 0.15, 'test_name': 'Confidence Threshold 0.15'},
+        {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.02, 'test_name': 'Ultra Conservative With Threshold'},
         
-        {'max_bet_percentage': 0.05, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.25, 'use_confidence_scaling': True,
-         'min_confidence_threshold': 0.2, 'test_name': 'Confidence Threshold 0.20'},
+        {'max_bet_percentage': 0.03, 'use_thresholds': False, 'min_kelly_threshold': 0.05, 
+         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.08, 'test_name': 'Moderate Conservative No Threshold'},
         
-        {'max_bet_percentage': 0.05, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.25, 'use_confidence_scaling': True,
-         'min_confidence_threshold': 0.25, 'test_name': 'Confidence Threshold 0.25'},
+        {'max_bet_percentage': 0.03, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
+         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.08, 'test_name': 'Moderate Conservative With Threshold'},
     ]
     
-    confidence_results = []
+    results = []
     
-    # Test each confidence parameter combination
-    for i, params in enumerate(confidence_test_params):
+    # Determine script directory for file paths
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    results_file_path = os.path.join(script_dir, 'backtest_results.csv')
+    
+    # Load existing results if available
+    existing_results = None
+    if os.path.exists(results_file_path):
+        try:
+            existing_results = pd.read_csv(results_file_path)
+            print(f"Loaded {len(existing_results)} existing test results")
+        except Exception as e:
+            print(f"Error loading existing results: {e}")
+            existing_results = None
+    
+    # Test each parameter combination
+    for i, params in enumerate(test_params):
         test_name = params.pop('test_name')  # Extract test name before passing params
-        print(f"\nRunning confidence test {i+1}: {test_name}")
+        print(f"\nRunning test {i+1}: {test_name}")
         print(f"Parameters: {params}")
         
-        results = backtest_kelly(
+        # Create a param key for identification
+        param_key = f"{params['max_bet_percentage']}_{int(params['use_thresholds'])}_{params['min_kelly_threshold']}_{params['min_ev_threshold']}_{params['kelly_fraction_multiplier']}"
+        
+        # Check if this combination already exists
+        if existing_results is not None:
+            # Create param keys for existing results
+            existing_results['param_key'] = (
+                existing_results['max_bet_percentage'].astype(str) + '_' +
+                existing_results['use_thresholds'].astype(int).astype(str) + '_' +
+                existing_results['min_kelly_threshold'].astype(str) + '_' +
+                existing_results['min_ev_threshold'].astype(str) + '_' +
+                existing_results['kelly_fraction_multiplier'].astype(str)
+            )
+            
+            if param_key in existing_results['param_key'].values:
+                print(f"Skipping test with param key {param_key} - already tested")
+                continue
+        
+        results_data = backtest_kelly(
             model_path='best_model.joblib',
             odds_data_path='Model_Training/processed_odds_data.csv',
             stats_data_path='Model_Training/test_data.csv',
             **params
         )
         
-        # Store key metrics
-        confidence_results.append({
-            'test_id': i+1,
+        # Store key metrics and parameters
+        results.append({
             'test_name': test_name,
-            'confidence_threshold': params.get('min_confidence_threshold', 'N/A'),
-            'use_confidence_scaling': params['use_confidence_scaling'],
-            'total_bets': results['total_bets'],
-            'win_rate': results['win_rate'],
-            'roi': results['roi'],
-            'max_drawdown': results['max_drawdown'],
-            'sharpe_ratio': results['roi'] / (results['max_drawdown'] if results['max_drawdown'] > 0 else 1),
-            'final_bankroll': results['final_bankroll']
+            'total_bets': results_data['total_bets'],
+            'win_rate': results_data['win_rate'],
+            'roi': results_data['roi'],
+            'max_drawdown': results_data['max_drawdown'],
+            'sharpe_ratio': results_data['roi'] / (results_data['max_drawdown'] if results_data['max_drawdown'] > 0 else 1),
+            'final_bankroll': results_data['final_bankroll'],
+            'max_bet_percentage': params['max_bet_percentage'],
+            'use_thresholds': params['use_thresholds'],
+            'min_kelly_threshold': params['min_kelly_threshold'],
+            'min_ev_threshold': params['min_ev_threshold'],
+            'kelly_fraction_multiplier': params['kelly_fraction_multiplier'],
+            'param_key': param_key,
+            'test_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
         
-        # Save bet history for this test
-        results['bet_history'].to_csv(f'confidence_test_{i+1}_history.csv', index=False)
+        # Save bet history for this test (using param key instead of index)
+        history_file = os.path.join(script_dir, f'test_history_{param_key}.csv')
+        results_data['bet_history'].to_csv(history_file, index=False)
+        print(f"Saved bet history to {history_file}")
     
-    # Create summary DataFrame
-    confidence_summary = pd.DataFrame(confidence_results)
-    confidence_summary.to_csv('confidence_scaling_test_results.csv', index=False)
-    
-    # Print summary
-    print("\nConfidence Scaling Test Results:")
-    print(confidence_summary[['test_id', 'test_name', 'confidence_threshold', 'total_bets', 
-                           'win_rate', 'roi', 'max_drawdown', 'sharpe_ratio']])
-    
-    # Print best result by ROI
-    best_roi = confidence_summary.loc[confidence_summary['roi'].idxmax()]
-    print("\nBest Strategy by ROI:")
-    print(f"Test #{best_roi['test_id']}: {best_roi['test_name']}")
-    print(f"Confidence Threshold: {best_roi['confidence_threshold']}")
-    print(f"ROI: {best_roi['roi']:.2f}%")
-    print(f"Win Rate: {best_roi['win_rate']:.2%}")
-    print(f"Total Bets: {best_roi['total_bets']}")
-    print(f"Max Drawdown: {best_roi['max_drawdown']:.2f}%")
-    print(f"Final Bankroll: ${best_roi['final_bankroll']:.2f}")
-    
-    # Print best result by Sharpe ratio
-    best_sharpe = confidence_summary.loc[confidence_summary['sharpe_ratio'].idxmax()]
-    print("\nBest Strategy by Sharpe Ratio:")
-    print(f"Test #{best_sharpe['test_id']}: {best_sharpe['test_name']}")
-    print(f"Confidence Threshold: {best_sharpe['confidence_threshold']}")
-    print(f"Sharpe Ratio: {best_sharpe['sharpe_ratio']:.2f}")
-    print(f"ROI: {best_sharpe['roi']:.2f}%")
-    print(f"Win Rate: {best_sharpe['win_rate']:.2%}")
-    print(f"Total Bets: {best_sharpe['total_bets']}")
-    print(f"Max Drawdown: {best_sharpe['max_drawdown']:.2f}%")
-    
-    # Create bet distribution analysis for the best strategy
-    best_strategy_id = best_sharpe['test_id']
-    best_history = pd.read_csv(f'confidence_test_{best_strategy_id}_history.csv')
-    
-    # Analyze confidence distribution
-    if 'confidence' in best_history.columns:
-        # Create confidence bins
-        best_history['confidence_bin'] = pd.cut(best_history['confidence'], 
-                                             bins=[0, 0.1, 0.2, 0.3, 0.4, 0.5], 
-                                             labels=['0.0-0.1', '0.1-0.2', '0.2-0.3', '0.3-0.4', '0.4-0.5'])
+    # If we have new results to add
+    if results:
+        # Create summary DataFrame for new results
+        new_results = pd.DataFrame(results)
         
-        # Analyze performance by confidence level
-        conf_analysis = best_history.groupby('confidence_bin').agg({
-            'bet_size': 'mean',
-            'won': 'mean',
-            'profit': ['sum', 'mean'],
-            'confidence': 'count'
-        }).reset_index()
+        # Combine with existing results if available
+        if existing_results is not None:
+            # Drop the temporary param_key column from existing results
+            if 'param_key' in existing_results.columns:
+                existing_results = existing_results.drop(columns=['param_key'])
+            
+            # Combine existing and new results
+            combined_results = pd.concat([existing_results, new_results], ignore_index=True)
+        else:
+            combined_results = new_results
         
-        conf_analysis.columns = ['confidence_bin', 'avg_bet_size', 'win_rate', 
-                              'total_profit', 'avg_profit', 'bet_count']
+        # Save combined results
+        combined_results.to_csv(results_file_path, index=False)
+        print(f"\nSaved {len(combined_results)} test results to {results_file_path}")
         
-        print("\nPerformance by Confidence Level (Best Strategy):")
-        print(conf_analysis)
+        # For display, drop param_key column
+        display_results = combined_results.drop(columns=['param_key']) if 'param_key' in combined_results.columns else combined_results
         
-        # Save the analysis
-        conf_analysis.to_csv('confidence_level_analysis.csv', index=False)
+        # Print summary of all results, sorted by ROI
+        print("\nAll Backtest Results (sorted by ROI):")
+        sorted_by_roi = display_results.sort_values('roi', ascending=False)
+        print(sorted_by_roi[['test_name', 'total_bets', 'win_rate', 'roi', 'max_drawdown', 'sharpe_ratio']].head(10))
+        
+        # Print summary of all results, sorted by Sharpe ratio
+        print("\nAll Backtest Results (sorted by Sharpe Ratio):")
+        sorted_by_sharpe = display_results.sort_values('sharpe_ratio', ascending=False)
+        print(sorted_by_sharpe[['test_name', 'total_bets', 'win_rate', 'roi', 'max_drawdown', 'sharpe_ratio']].head(10))
+    else:
+        print("\nNo new parameter combinations tested.")
     
-    # Now run the full parameter test if the user wants to continue with it
-    print("\nConfidence scaling test complete.")
-    print("To run the full parameter test, update your main test_params with the best confidence threshold.") 
+    # If we have combined results, print best performers
+    if 'combined_results' in locals():
+        # Print best result by ROI
+        best_roi = combined_results.loc[combined_results['roi'].idxmax()]
+        print("\nBest Strategy by ROI:")
+        print(f"Test Name: {best_roi['test_name']}")
+        print(f"Parameters: max_bet={best_roi['max_bet_percentage']}, use_thresholds={best_roi['use_thresholds']}, "
+              f"min_kelly={best_roi['min_kelly_threshold']}, min_ev={best_roi['min_ev_threshold']}, "
+              f"kelly_multiplier={best_roi['kelly_fraction_multiplier']}")
+        print(f"ROI: {best_roi['roi']:.2f}%")
+        print(f"Win Rate: {best_roi['win_rate']:.2%}")
+        print(f"Total Bets: {best_roi['total_bets']}")
+        print(f"Max Drawdown: {best_roi['max_drawdown']:.2f}%")
+        print(f"Final Bankroll: ${best_roi['final_bankroll']:.2f}")
+        
+        # Print best result by Sharpe ratio
+        best_sharpe = combined_results.loc[combined_results['sharpe_ratio'].idxmax()]
+        print("\nBest Strategy by Sharpe Ratio:")
+        print(f"Test Name: {best_sharpe['test_name']}")
+        print(f"Parameters: max_bet={best_sharpe['max_bet_percentage']}, use_thresholds={best_sharpe['use_thresholds']}, "
+              f"min_kelly={best_sharpe['min_kelly_threshold']}, min_ev={best_sharpe['min_ev_threshold']}, "
+              f"kelly_multiplier={best_sharpe['kelly_fraction_multiplier']}")
+        print(f"Sharpe Ratio: {best_sharpe['sharpe_ratio']:.2f}")
+        print(f"ROI: {best_sharpe['roi']:.2f}%")
+        print(f"Win Rate: {best_sharpe['win_rate']:.2%}")
+        print(f"Total Bets: {best_sharpe['total_bets']}")
+        print(f"Max Drawdown: {best_sharpe['max_drawdown']:.2f}%") 
