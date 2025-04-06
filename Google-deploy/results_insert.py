@@ -49,6 +49,7 @@ def get_team_code(full_team_name: str) -> str:
     return None
 
 
+# Restructure results to be inserted into db
 def insert_results(results: List[Dict]):
     collection = connect_to_mongodb()
     if collection is None:
@@ -81,6 +82,8 @@ def insert_results(results: List[Dict]):
             away_odds = bookmaker["odds"]["away"]
             home_ev = bookmaker["expected_value"]["home"]
             away_ev = bookmaker["expected_value"]["away"]
+            home_kelly = bookmaker["kelly_fractions"]["home_kelly"]
+            away_kelly = bookmaker["kelly_fractions"]["away_kelly"]
 
             game_result = {
                 "home_team": home_team,
@@ -95,6 +98,8 @@ def insert_results(results: List[Dict]):
                 "away_odds": away_odds,
                 "home_ev": home_ev,
                 "away_ev": away_ev,
+                "home_kelly": home_kelly,
+                "away_kelly": away_kelly,
             }
 
             time_window_start = commence_time - timedelta(hours=2)

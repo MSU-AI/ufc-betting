@@ -88,6 +88,20 @@ def prepare_stats(home_stats: Dict, away_stats: Dict) -> pd.DataFrame:
     return pd.DataFrame([validated_stats], dtype=np.float32)
 
 
+def calculate_kelly(p_model: float, odds: int) -> float:
+    # Convert odds to decimal odds
+    decimal_odds = 0
+    if odds < 0:  # 'minus' odds
+        decimal_odds = (100 / -(odds)) + 1
+    else:
+        decimal_odds = (odds / 100) + 1
+
+    b = decimal_odds - 1
+    q = 1 - p_model
+    kelly = (b * p_model - q) / b if b != 0 else 0
+    return round(kelly, 4)  # Neg kelly means to take the other side
+
+
 def run_inference_pipeline(model) -> list:
     team_stats = load_data()
     if team_stats is None:
@@ -143,12 +157,19 @@ def run_inference_pipeline(model) -> list:
                     home_ev = calc_expected_val(home_team, home_odds, home_win_prob)
                     away_ev = calc_expected_val(away_team, away_odds, away_win_prob)
 
+                    home_kelly = calculate_kelly(home_win_prob, home_odds)
+                    away_kelly = calculate_kelly(away_win_prob, away_odds)
+
                     bookmaker_result = {
                         "bookmaker": bookmaker,
                         "odds": {"home": home_odds, "away": away_odds},
                         "expected_value": {
                             "home": home_ev[home_team]["edge"],
                             "away": away_ev[away_team]["edge"],
+                        },
+                        "kelly_fractions": {
+                            "home_kelly": home_kelly,
+                            "away_kelly": away_kelly,
                         },
                     }
 
@@ -161,96 +182,3 @@ def run_inference_pipeline(model) -> list:
             continue
 
     return results
-
-
-def generate_ev():
-    # Load model
-    try:
-        model = joblib.load(MODEL_PATH)
-    except Exception as e:
-        print(f"Error loading model: {str(e)}")
-        return
-
-    team_stats = load_data()
-    if team_stats is None:
-        return None
-
-    # Get upcoming games
-    upcoming_games = get_upcoming_games()
-    results = []
-
-    # Process each game
-    for game in upcoming_games:
-        home_team = game["game_info"]["home_team"]
-        away_team = game["game_info"]["away_team"]
-
-        # Get team stats
-        home_stats = team_stats.get(convert_team_name(home_team))
-        away_stats = team_stats.get(convert_team_name(away_team))
-
-        if not home_stats or not away_stats:
-            continue
-
-        # Prepare stats for model
-        stats_df = prepare_stats(home_stats, away_stats)
-        if stats_df is None:
-            continue
-
-        try:
-            # Make prediction
-            prediction = model.predict_proba(stats_df)
-            away_win_prob = prediction[0][0]
-            home_win_prob = prediction[0][1]
-
-            game_result = {
-                "game_info": {
-                    "home_team": home_team,
-                    "away_team": away_team,
-                    "commence_time": game["game_info"]["commence_time"],
-                    "model_probabilities": {
-                        "home_win": float(home_win_prob),
-                        "away_win": float(away_win_prob),
-                    },
-                },
-                "bookmaker_odds": [],
-            }
-
-            # Process odds for each bookmaker
-            for bookmaker, odds in game["odds"].items():
-                if home_team in odds and away_team in odds:
-                    home_odds = odds[home_team]
-                    away_odds = odds[away_team]
-
-                    # Calculate EV for each bet
-                    home_ev = calc_expected_val(home_team, home_odds, home_win_prob)
-                    away_ev = calc_expected_val(away_team, away_odds, away_win_prob)
-
-                    bookmaker_result = {
-                        "bookmaker": bookmaker,
-                        "odds": {"home": home_odds, "away": away_odds},
-                        "expected_value": {
-                            "home": home_ev[home_team]["edge"],
-                            "away": away_ev[away_team]["edge"],
-                        },
-                    }
-
-                    game_result["bookmaker_odds"].append(bookmaker_result)
-
-            results.append(game_result)
-
-        except Exception as e:
-            print(f"\nError processing game {home_team} vs {away_team}: {str(e)}")
-            continue
-
-    return results
-
-
-if __name__ == "__main__":
-    results = generate_ev()
-
-    pprint(results)
-    insert_results(results)
-
-    # output results to json file
-    with open("results.json", "w") as f:
-        json.dump(results, f, indent=2)
