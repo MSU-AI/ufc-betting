@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
 import joblib
-from feature_engineering import engineer_features
+from utils.feature_engineering import engineer_features
 import json
 from datetime import datetime
 import os

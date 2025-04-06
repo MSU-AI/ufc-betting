@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import warnings
-from feature_engineering import engineer_features
+from utils.feature_engineering import engineer_features
 from datetime import datetime
 from team_name_converter import convert_team_name
 import json
@@ -267,23 +267,14 @@ if __name__ == "__main__":
     
     # Define test parameters
     test_params = [
-        {'max_bet_percentage': 0.02, 'use_thresholds': False, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.05, 'test_name': 'Conservative No Threshold'},
-         
-        {'max_bet_percentage': 0.02, 'use_thresholds': True, 'min_kelly_threshold': 0.1, 
-         'min_ev_threshold': 0.15, 'kelly_fraction_multiplier': 0.05, 'test_name': 'Conservative With Threshold'},
-        
-        {'max_bet_percentage': 0.01, 'use_thresholds': False, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.02, 'test_name': 'Ultra Conservative No Threshold'},
-        
         {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.02, 'test_name': 'Ultra Conservative With Threshold'},
-        
-        {'max_bet_percentage': 0.03, 'use_thresholds': False, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.08, 'test_name': 'Moderate Conservative No Threshold'},
-        
-        {'max_bet_percentage': 0.03, 'use_thresholds': True, 'min_kelly_threshold': 0.05, 
-         'min_ev_threshold': 0.1, 'kelly_fraction_multiplier': 0.08, 'test_name': 'Moderate Conservative With Threshold'},
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly With Threshold'},
+        {'max_bet_percentage': 0.01, 'use_thresholds': False, 'min_kelly_threshold': 0.08, 
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly No Threshold'},
+        {'max_bet_percentage': 0.3, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly, 30% max bet With Threshold'},
+        {'max_bet_percentage': 0.3, 'use_thresholds': False, 'min_kelly_threshold': 0.08, 
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly, 30% max bet No Threshold'},
     ]
     
     results = []
