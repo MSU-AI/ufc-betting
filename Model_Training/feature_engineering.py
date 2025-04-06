@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 def create_rolling_features(df, window_sizes=[3, 5, 10]):
     """Create rolling window features for recent performance."""
@@ -183,6 +184,20 @@ def create_composite_metrics(df):
     return ['home_def_rating', 'away_def_rating', 'def_rating_diff',
             'home_performance', 'away_performance', 'performance_diff']
 
+def scale_features(df):
+    """Scale numerical features using StandardScaler."""
+    # Identify columns to scale (exclude non-numeric and target columns)
+    cols_to_scale = df.select_dtypes(include=['float64', 'int64']).columns
+    cols_to_scale = [col for col in cols_to_scale if col != 'target']
+    
+    # Initialize scaler
+    scaler = StandardScaler()
+    
+    # Scale features
+    df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
+    
+    return df
+
 def engineer_features(df):
     """Main function to engineer all features."""
     create_rolling_features(df)
@@ -195,7 +210,11 @@ def engineer_features(df):
     create_efficiency_metrics(df)
     create_performance_differentials(df)
     create_composite_metrics(df)
-    #fill na with 0
+    
+    # Fill NA with 0 before scaling
     df = df.fillna(0)
-
+    
+    # Scale features as final step
+    df = scale_features(df)
+    
     return df
