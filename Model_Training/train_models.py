@@ -1,3 +1,11 @@
+import sys
+import os
+from pathlib import Path
+
+# Add parent directory to Python path
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
+
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
@@ -15,7 +23,6 @@ import joblib
 from utils.feature_engineering import engineer_features
 import json
 from datetime import datetime
-import os
 import optuna
 from optuna.integration import XGBoostPruningCallback
 
@@ -483,9 +490,9 @@ def main():
     base_path = os.path.dirname(os.path.abspath(__file__))
     data_path = {
         'season': os.path.join(base_path, 'team_game_stats_season.csv'),
-        '3_game': os.path.join(base_path, 'team_game_stats_3game_stats.csv'),
-        '5_game': os.path.join(base_path, 'team_game_stats_5game_stats.csv'),
-        '10_game': os.path.join(base_path, 'team_game_stats_10game_stats.csv')
+        '3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
+        '5_game': os.path.join(base_path, 'team_game_stats_5game.csv'),
+        '10_game': os.path.join(base_path, 'team_game_stats_10game.csv')
     }
     X_train, y_train, X_val, y_val, X_test, y_test, test_data = load_data(data_path, basic_features_only=False)
     
