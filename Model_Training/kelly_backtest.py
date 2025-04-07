@@ -118,7 +118,8 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
         features = game_stats.copy()
         features = features.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
         
-        # Get model prediction
+    
+        
         home_win_prob = model.predict_proba(features)[0][1]
         away_win_prob = 1 - home_win_prob  # Away team's probability is complement of home
         
@@ -275,10 +276,10 @@ if __name__ == "__main__":
     
     # Define test parameters
     test_params = [
-        {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.05, 'test_name': '5% kelly With Threshold'},
-        {'max_bet_percentage': 0.01, 'use_thresholds': False, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.05, 'test_name': '5% kelly No Threshold'},
+        # Conservative approach
+        {'kelly_fraction_multiplier': 0.25, 'test_name': '15% kelly No Threshold', 'max_bet_percentage': 0.1, 
+         'use_thresholds': False, 'min_kelly_threshold': 0.08, 'min_ev_threshold': 0.12},
+    
     ]
     
     results = []

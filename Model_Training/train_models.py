@@ -25,6 +25,7 @@ import json
 from datetime import datetime
 import optuna
 from optuna.integration import XGBoostPruningCallback
+from temperature_scaling import ModelWithTemperature
 
 def load_data(filepaths, basic_features_only=False):
     """
@@ -120,44 +121,25 @@ class FFNClassifier(nn.Module):
             ])
             prev_dim = hidden_dim
             
-        layers.append(nn.Linear(prev_dim, 1))
-        layers.append(nn.Sigmoid())
-        
+        # Output layer just produces logits
+        layers.append(nn.Linear(prev_dim, 2))
         self.network = nn.Sequential(*layers)
     
-    def forward(self, x):
-        return self.network(x)
-
+    def forward(self, x, return_probas=False):
+        logits = self.network(x)
+        # Only apply softmax when explicitly requested (for predictions)
+        if return_probas:
+            return torch.softmax(logits, dim=1)
+        return logits
+    
     def predict_proba(self, X):
-        """
-        Predict class probabilities for input X
-        
-        Parameters:
-        -----------
-        X : array-like of shape (n_samples, n_features)
-            Input samples
-            
-        Returns:
-        --------
-        array-like of shape (n_samples, 2)
-            Returns predicted probabilities for both classes [P(y=0), P(y=1)]
-        """
-        #convert X to numpy array
-        X = X.to_numpy()
-        
-        # Convert input to tensor if not already
+        X = X.to_numpy() if isinstance(X, pd.DataFrame) else X
         if not isinstance(X, torch.Tensor):
             X = torch.FloatTensor(X)
-            
-        # Set model to evaluation mode
         self.eval()
-        
-        # Get predictions
         with torch.no_grad():
-            probas = self.forward(X).numpy()
-        
-        # Return probabilities for both classes [P(y=0), P(y=1)]
-        return np.column_stack([1 - probas, probas])
+            # Explicitly request probabilities here
+            return self.forward(X, return_probas=True).numpy()
 
 class ResidualBlock(nn.Module):
     def __init__(self, input_dim, hidden_dim):
@@ -200,38 +182,44 @@ class ResFFNClassifier(nn.Module):
             prev_dim = hidden_dim
         
         self.network = nn.Sequential(*layers)
-        self.output = nn.Sequential(
-            nn.Linear(prev_dim, 1),
-            nn.Sigmoid()
-        )
+        # Output layer just produces logits
+        self.output = nn.Linear(prev_dim, 2)
     
-    def forward(self, x):
+    def forward(self, x, return_probas=False):
         x = self.input_proj(x)
         x = self.network(x)
-        return self.output(x)
+        logits = self.output(x)
+        # Only apply softmax when explicitly requested
+        if return_probas:
+            return torch.softmax(logits, dim=1)
+        return logits
     
     def predict_proba(self, X):
-        X = X.to_numpy()
+        X = X.to_numpy() if isinstance(X, pd.DataFrame) else X
         if not isinstance(X, torch.Tensor):
             X = torch.FloatTensor(X)
         self.eval()
         with torch.no_grad():
-            probas = self.forward(X).numpy()
-        return np.column_stack([1 - probas, probas])
+            # Explicitly request probabilities here
+            return self.forward(X, return_probas=True).numpy()
+
 
 def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
     # Convert DataFrames to numpy arrays first, then to PyTorch tensors
     X_train = torch.FloatTensor(X_train.to_numpy())
-    y_train = torch.FloatTensor(y_train.values).reshape(-1, 1)
+    y_train = torch.LongTensor(y_train.values)
     X_val = torch.FloatTensor(X_val.to_numpy())
-    y_val = torch.FloatTensor(y_val.values).reshape(-1, 1)
+    y_val = torch.LongTensor(y_val.values)
     
     # Create data loaders
     train_dataset = TensorDataset(X_train, y_train)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     
+    valid_dataset = TensorDataset(X_val, y_val)
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+    
     # Loss and optimizer
-    criterion = nn.BCELoss()
+    criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
     # Training loop
@@ -244,16 +232,19 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
         model.train()
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
-            outputs = model(batch_X)
-            loss = criterion(outputs, batch_y)
+            # Get logits (not probabilities) for training
+            logits = model(batch_X)
+            # CrossEntropyLoss expects logits
+            loss = criterion(logits, batch_y)
             loss.backward()
             optimizer.step()
         
         # Validation
         model.eval()
         with torch.no_grad():
-            val_outputs = model(X_val)
-            val_loss = criterion(val_outputs, y_val)
+            # Get logits (not probabilities) for validation
+            val_logits = model(X_val)
+            val_loss = criterion(val_logits, y_val)
             
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -268,6 +259,13 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
     
     # Load best model state
     model.load_state_dict(best_state)
+    
+    valid_dataset = TensorDataset(X_val, y_val)
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+    
+    #model = ModelWithTemperature(model)
+    #model.set_temperature(valid_loader)
+    
     return model
 
 def objective(trial, X_train, y_train, X_val, y_val):
@@ -376,15 +374,16 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
         print(f"\nTraining {name}...")
         
         if isinstance(model, FFNClassifier) or isinstance(model, ResFFNClassifier):
-            # Train neural network
+            # Train and calibrate neural network
             model = train_neural_net(model, X_train_scaled, y_train, X_val_scaled, y_val)
-            # Add neural network to calibrated_models
             calibrated_models[name] = model
-            # Get predictions
+            
+            # Get predictions using calibrated model
             model.eval()
             with torch.no_grad():
                 X_test_tensor = torch.FloatTensor(X_test_scaled.to_numpy())
-                y_pred_proba = model(X_test_tensor).numpy().flatten()
+                # Use predict_proba method which properly handles probability calculation
+                y_pred_proba = model.predict_proba(X_test_tensor)[:, 1]
         else:
             # Handle XGBoost model differently than other models
             if name == 'XGBoost':
@@ -414,20 +413,51 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     return calibrated_models, results
 
 def plot_calibration_curves(results):
-    plt.figure(figsize=(10, 6))
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), height_ratios=[1, 2])
+    fig.suptitle('Model Calibration Analysis', fontsize=12)
     
+    # Plot prediction distribution histogram
     for name, result in results.items():
-        prob_true, prob_pred = calibration_curve(result['y_test'], 
-                                               result['y_pred_proba'], 
-                                               n_bins=10)
-        plt.plot(prob_pred, prob_true, marker='o', label=f'{name} (Brier: {result["brier_score"]:.3f})')
+        ax1.hist(result['y_pred_proba'], 
+                bins=50, 
+                density=True, 
+                alpha=0.3, 
+                label=name)
+    ax1.set_xlabel('Predicted probability')
+    ax1.set_ylabel('Density')
+    ax1.set_title('Distribution of Predictions')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
     
-    plt.plot([0, 1], [0, 1], linestyle='--', label='Perfectly calibrated')
-    plt.xlabel('Mean predicted probability')
-    plt.ylabel('True probability')
-    plt.title('Calibration Curves')
-    plt.legend()
-    plt.grid(True)
+    # Plot calibration curves
+    for name, result in results.items():
+        prob_true, prob_pred = calibration_curve(
+            result['y_test'],
+            result['y_pred_proba'],
+            n_bins=10,
+            strategy='quantile'  # Use quantile binning for more reliable curves
+        )
+        ax2.plot(prob_pred, 
+                prob_true, 
+                marker='o', 
+                linewidth=2,
+                label=f'{name} (Brier: {result["brier_score"]:.3f})')
+    
+    # Add reference line
+    ax2.plot([0, 1], [0, 1], 
+            linestyle='--', 
+            color='gray', 
+            label='Perfectly calibrated')
+    
+    ax2.set_xlabel('Mean predicted probability')
+    ax2.set_ylabel('True probability')
+    ax2.set_title('Calibration Curves')
+    ax2.legend(loc='upper left')
+    ax2.grid(True, alpha=0.3)
+    
+    # Adjust layout and save
+    plt.tight_layout()
     plt.savefig('calibration_curves.png')
     plt.close()
 
@@ -486,9 +516,9 @@ def main():
     base_path = os.path.dirname(os.path.abspath(__file__))
     data_path = {
         'season': os.path.join(base_path, 'team_game_stats_season.csv'),
-        #'3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
+        '3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
         '5_game': os.path.join(base_path, 'team_game_stats_5game.csv'),
-        #'10_game': os.path.join(base_path, 'team_game_stats_10game.csv')
+        '10_game': os.path.join(base_path, 'team_game_stats_10game.csv')
     }
     X_train, y_train, X_val, y_val, X_test, y_test, test_data = load_data(data_path, basic_features_only=False)
     
