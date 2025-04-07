@@ -117,7 +117,7 @@ class FFNClassifier(nn.Module):
                 nn.Linear(prev_dim, hidden_dim),
                 nn.ReLU(),
                 nn.BatchNorm1d(hidden_dim),
-                nn.Dropout(0.5)
+                nn.Dropout(0.1)
             ])
             prev_dim = hidden_dim
             
@@ -220,12 +220,12 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     
     # Training loop
     best_val_loss = float('inf')
     best_state = None
-    patience = 10
+    patience = 15
     patience_counter = 0
     
     for epoch in range(epochs):
@@ -315,13 +315,11 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     # Initialize models
     models = {
         'Logistic Regression': LogisticRegression(random_state=42),
-        #'XGBoost': None,  # Will be set after tuning
-        'FFN_Small': FFNClassifier(X_train.shape[1], [64, 32]),
-        'FFN_Medium': FFNClassifier(X_train.shape[1], [128, 64, 32]),
-        'FFN_Large': FFNClassifier(X_train.shape[1], [256, 128, 64, 32])
-        #'ResFFN_Small': ResFFNClassifier(X_train.shape[1], [64, 32]),
-        #'ResFFN_Medium': ResFFNClassifier(X_train.shape[1], [128, 64, 32]),
-        #'ResFFN_Large': ResFFNClassifier(X_train.shape[1], [256, 128, 64, 32])
+        #'FFN_Small': FFNClassifier(X_train.shape[1], [256, 128, 64]),
+        #'FFN_Medium': FFNClassifier(X_train.shape[1], [512, 256, 128, 64]),
+        #'FFN_Large': FFNClassifier(X_train.shape[1], [512, 256, 256, 256]),
+        #'FFN_Wide': FFNClassifier(X_train.shape[1], [1024, 512, 512]),
+        'FFN_Large_Wide': FFNClassifier(X_train.shape[1], [2048, 1024, 1024, 1024]),
     }
     
     '''
