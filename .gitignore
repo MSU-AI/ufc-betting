@@ -16,3 +16,4 @@
 /betting-website/.env.local
 /Model_Deployment/.env.local
 *.local
+node_modules
