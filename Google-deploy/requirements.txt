@@ -1,0 +1,13 @@
+Flask==3.1.0
+gunicorn
+joblib==1.4.2
+lightgbm==4.6.0
+numpy==2.2.4
+pandas==2.2.3
+pydantic==2.10.6
+pymongo==4.11.3
+python-dotenv==1.1.0
+Requests==2.32.3
+scikit-learn==1.6.1
+selenium
+xgboost==3.0.0

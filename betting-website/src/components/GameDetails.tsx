@@ -10,6 +10,9 @@ import {
   MapPinIcon,
   TrendingUpIcon,
 } from "lucide-react";
+import { useUserTimeZone } from "@/lib/timeZone";
+
+
 
 export type OddsRow = {
   book: string;
@@ -35,8 +38,17 @@ export type GameDetailsProps = {
   };
 };
 
-const getTeamLogo = (team: string) => `/logos/${team}.svg`;
 function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsProps) {
+  const userTimeZone = useUserTimeZone();
+  const getTeamLogo = (team: string) => `/logos/${team}.svg`;
+  const eventTime = new Date(gameDetails.game_time);
+  const formattedTime = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "numeric",
+    timeZone: userTimeZone,
+    timeZoneName: "short",
+  }).format(eventTime);
+
   const bestTeam = React.useMemo(() => {
     return teamNames.reduce((prev, curr) => {
       const currProb = parseFloat(oddsData[curr][0]?.probability.replace("%", "")) || 0;
@@ -56,23 +68,34 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center -mb-3">
             <div className="flex items-center justify-center gap-4">
               <div className="flex items-center justify-center">
-                <img src={logoLeft} alt={`${teamNames[0]} logo`} width={70} height={70} className="min-w-[70px] flex-shrink-0" />
+                <img
+                  src={logoLeft}
+                  alt={`${teamNames[0]} logo`}
+                  width={70}
+                  height={70}
+                  className="min-w-[70px] flex-shrink-0"
+                />
               </div>
               <span className="whitespace-nowrap">
                 {teamNames[0]} vs. {teamNames[1]}
               </span>
               <div className="flex items-center justify-center">
-                <img src={logoRight} alt={`${teamNames[1]} logo`} width={70} height={70} className="min-w-[70px] flex-shrink-0" />
+                <img
+                  src={logoRight}
+                  alt={`${teamNames[1]} logo`}
+                  width={70}
+                  height={70}
+                  className="min-w-[70px] flex-shrink-0"
+                />
               </div>
             </div>
           </h1>
 
-          {/* Game Details */}
           <div className="mb-4 space-y-3">
             <div className="flex items-center justify-center gap-3 text-sm sm:text-base text-gray-600 mt-4">
               <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1 rounded-full">
                 <ClockIcon className="h-4 w-4" />
-                <span>{gameDetails.game_time}</span>
+                <span>{formattedTime}</span>
               </div>
               <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1 rounded-full">
                 <MapPinIcon className="h-4 w-4" />
@@ -80,7 +103,6 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
               </div>
             </div>
 
-            {/* H2H, Over/Under, and Injuries */}
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm sm:text-base">
               <div className="flex items-center gap-1">
                 <span className="font-medium text-purple-600">H2H:</span>
@@ -99,7 +121,6 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
             </div>
           </div>
 
-          {/* Trophy display */}
           <div className="flex font-inter items-center justify-center gap-2 text-base sm:text-lg text-gray-800 mb-4">
             <FaTrophy className="text-yellow-500 h-4 w-4" />
             <span className="font-bold">{bestTeam}</span>
@@ -108,7 +129,6 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
             </span>
           </div>
 
-          {/* Betting odds tabs */}
           <Tabs defaultValue={teamNames[0]}>
             <TabsList className="flex justify-center space-x-1 mb-4">
               {teamNames.map((team) => (
@@ -128,7 +148,6 @@ function GameDetails({ teamNames, oddsData, logos, gameDetails }: GameDetailsPro
           </Tabs>
         </div>
 
-        {/* AI Prediction Section */}
         <div className="mt-12 p-5 bg-gradient-to-r from-blue-200 to-blue-100 border border-blue-300 rounded-lg shadow-lg flex items-center justify-center">
           <p className="text-center text-lg sm:text-xl font-bold text-blue-800">
             AI Prediction: <span className="underline">{bestTeam}</span> is most likely to win!
