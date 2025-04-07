@@ -19,9 +19,41 @@ import os
 import optuna
 from optuna.integration import XGBoostPruningCallback
 
-def load_data(filepath, basic_features_only=False):
-    df = pd.read_csv(filepath)
+def load_data(filepaths, basic_features_only=False):
+    """
+    Load and combine data from multiple window lengths
     
+    Parameters:
+    -----------
+    """
+    dfs = {}
+    
+    # Load each window's data
+    for window_name, filepath in filepaths.items():
+        df = pd.read_csv(filepath)
+        
+        # Add window prefix to all columns except those that should remain unchanged
+        unchanged_cols = ['target', 'team_abbreviation_home', 'team_abbreviation_away', 
+                         'game_id', 'date', 'team_id_home', 'team_id_away', 
+                         'season', 'wl_home']
+        
+        rename_cols = {col: f'{window_name}_{col}' 
+                      for col in df.columns 
+                      if col not in unchanged_cols}
+        
+        df = df.rename(columns=rename_cols)
+        dfs[window_name] = df
+    
+    # Merge all dataframes on the common columns
+    df = dfs['season'].copy()  # Start with season window data
+    merge_cols = ['game_id', 'date', 'team_id_home', 'team_id_away', 
+                 'team_abbreviation_home', 'team_abbreviation_away', 
+                 'season', 'wl_home']
+    
+    # Merge with other windows
+    for window_name in ['3_game', '5_game', '10_game']:
+        df = df.merge(dfs[window_name], on=merge_cols, suffixes=('', f'_{window_name}'))
+
     # Convert win/loss to binary
     df['target'] = (df['wl_home'] == 'W').astype(int)
     
@@ -449,7 +481,12 @@ def save_model(calibrated_model, feature_names):
 def main():
     # Load data
     base_path = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(base_path, 'team_game_stats_season.csv')
+    data_path = {
+        'season': os.path.join(base_path, 'team_game_stats_season.csv'),
+        '3_game': os.path.join(base_path, 'team_game_stats_3game_stats.csv'),
+        '5_game': os.path.join(base_path, 'team_game_stats_5game_stats.csv'),
+        '10_game': os.path.join(base_path, 'team_game_stats_10game_stats.csv')
+    }
     X_train, y_train, X_val, y_val, X_test, y_test, test_data = load_data(data_path, basic_features_only=False)
     
     # Train and evaluate models

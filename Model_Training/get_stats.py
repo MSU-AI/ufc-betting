@@ -91,7 +91,16 @@ FROM game;
 
 # Create queries for 3, 5, and 10 game averages
 create_3game_query = """
-WITH TeamAverages AS (
+WITH SeasonDates AS (
+    SELECT 
+        season_id,
+        MIN(game_date) as season_start,
+        MAX(game_date) as season_end
+    FROM game 
+    WHERE game_date >= '2015-10-27'
+    GROUP BY season_id
+),
+TeamAverages AS (
     SELECT 
         game_id,
         team,
@@ -112,7 +121,9 @@ SELECT
     g.game_date as date,
     g.season_id as season,
     g.team_id_home,
+    g.team_abbreviation_home,
     g.team_id_away,
+    g.team_abbreviation_away,
     g.wl_home,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
@@ -131,16 +142,29 @@ SELECT
     aa.avg_fg3_pct AS away_avg_fg3_pct,
     aa.avg_ft_pct AS away_avg_ft_pct
 FROM game as g
+JOIN SeasonDates sd ON g.season_id = sd.season_id
 LEFT JOIN TeamAverages ha 
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
+WHERE g.game_date >= sd.season_start
+    AND g.game_date <= sd.season_end
+    AND g.game_date >= '2015-10-27' 
+    AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
 create_5game_query = """
-WITH TeamAverages AS (
+WITH SeasonDates AS (
+    SELECT 
+        season_id,
+        MIN(game_date) as season_start,
+        MAX(game_date) as season_end
+    FROM game 
+    WHERE game_date >= '2015-10-27'
+    GROUP BY season_id
+),
+TeamAverages AS (
     SELECT 
         game_id,
         team,
@@ -161,7 +185,9 @@ SELECT
     g.game_date as date,
     g.season_id as season,
     g.team_id_home,
+    g.team_abbreviation_home,
     g.team_id_away,
+    g.team_abbreviation_away,
     g.wl_home,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
@@ -180,16 +206,29 @@ SELECT
     aa.avg_fg3_pct AS away_avg_fg3_pct,
     aa.avg_ft_pct AS away_avg_ft_pct
 FROM game as g
+JOIN SeasonDates sd ON g.season_id = sd.season_id
 LEFT JOIN TeamAverages ha 
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
+WHERE g.game_date >= sd.season_start
+    AND g.game_date <= sd.season_end
+    AND g.game_date >= '2015-10-27' 
+    AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
 create_10game_query = """
-WITH TeamAverages AS (
+WITH SeasonDates AS (
+    SELECT 
+        season_id,
+        MIN(game_date) as season_start,
+        MAX(game_date) as season_end
+    FROM game 
+    WHERE game_date >= '2015-10-27'
+    GROUP BY season_id
+),
+TeamAverages AS (
     SELECT 
         game_id,
         team,
@@ -210,7 +249,9 @@ SELECT
     g.game_date as date,
     g.season_id as season,
     g.team_id_home,
+    g.team_abbreviation_home,
     g.team_id_away,
+    g.team_abbreviation_away,
     g.wl_home,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
@@ -229,11 +270,15 @@ SELECT
     aa.avg_fg3_pct AS away_avg_fg3_pct,
     aa.avg_ft_pct AS away_avg_ft_pct
 FROM game as g
+JOIN SeasonDates sd ON g.season_id = sd.season_id
 LEFT JOIN TeamAverages ha 
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
+WHERE g.game_date >= sd.season_start
+    AND g.game_date <= sd.season_end
+    AND g.game_date >= '2015-10-27' 
+    AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
