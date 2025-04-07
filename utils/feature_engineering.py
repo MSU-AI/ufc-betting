@@ -38,14 +38,24 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
             
             rolling_features.extend([home_roll_col, away_roll_col, diff_col])
             
-        # Create rolling win percentage features using shifted target
-        df['home_winpct_last_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['target'].transform(
-            lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-        )
+        # Create rolling win percentage features using both home and away games
+        df['home_winpct_last_{}'.format(window)] = df.groupby(['team_id_home', 'season']).apply(
+            lambda x: pd.concat([
+                # When team was home
+                x.groupby(['team_id_home'])['wl_home'].shift(1).rolling(window=window, min_periods=1),
+                # When team was away
+                df[df['team_id_away'] == x.name[0]].groupby(['team_id_away'])['wl_away'].shift(1).rolling(window=window, min_periods=1)
+            ]).mean()
+        ).reset_index(level=0, drop=True)
         
-        df['away_winpct_last_{}'.format(window)] = df.groupby(['team_id_away', 'season'])['target'].transform(
-            lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-        )
+        df['away_winpct_last_{}'.format(window)] = df.groupby(['team_id_away', 'season']).apply(
+            lambda x: pd.concat([
+                # When team was home
+                df[df['team_id_home'] == x.name[0]].groupby(['team_id_home'])['wl_home'].shift(1).rolling(window=window, min_periods=1),
+                # When team was away
+                x.groupby(['team_id_away'])['wl_away'].shift(1).rolling(window=window, min_periods=1)
+            ]).mean()
+        ).reset_index(level=0, drop=True)
         
         rolling_features.extend([
             'home_winpct_last_{}'.format(window),
@@ -200,7 +210,7 @@ def scale_features(df):
 
 def engineer_features(df):
     """Main function to engineer all features."""
-    create_rolling_features(df)
+    #create_rolling_features(df)
     create_offensive_ratings(df)
     create_efficiency_differences(df)
     create_basic_differentials(df)

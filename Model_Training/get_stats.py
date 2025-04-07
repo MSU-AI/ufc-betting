@@ -44,6 +44,7 @@ SELECT
     game_date as date,
     team_id_home AS team,
     'home' AS location,
+    CASE WHEN wl_home = 'W' THEN 1 ELSE 0 END as win,
     pts_home AS pts,
     reb_home AS reb,
     ast_home AS ast,
@@ -69,6 +70,7 @@ SELECT
     game_date as date,
     team_id_away AS team,
     'away' AS location,
+    CASE WHEN wl_away = 'W' THEN 1 ELSE 0 END as win,
     pts_away AS pts,
     reb_away AS reb,
     ast_away AS ast,
@@ -105,14 +107,15 @@ TeamAverages AS (
         game_id,
         team,
         season_id,
+        AVG(CAST(win as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS win_pct,
         AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_pts,
         AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_reb,
         AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ast,
         AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_stl,
         AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
+        AVG(CAST(fg_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
+        AVG(CAST(fg3_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
+        AVG(CAST(ft_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
     FROM TeamGames
     WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
@@ -125,6 +128,7 @@ SELECT
     g.team_id_away,
     g.team_abbreviation_away,
     g.wl_home,
+    ha.win_pct AS home_win_pct,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
     ha.avg_ast AS home_avg_ast,
@@ -133,6 +137,7 @@ SELECT
     ha.avg_fg_pct AS home_avg_fg_pct,
     ha.avg_fg3_pct AS home_avg_fg3_pct,
     ha.avg_ft_pct AS home_avg_ft_pct,
+    aa.win_pct AS away_win_pct,
     aa.avg_pts AS away_avg_pts,
     aa.avg_reb AS away_avg_reb,
     aa.avg_ast AS away_avg_ast,
@@ -169,14 +174,15 @@ TeamAverages AS (
         game_id,
         team,
         season_id,
+        AVG(CAST(win as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS win_pct,
         AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_pts,
         AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_reb,
         AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ast,
         AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_stl,
         AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
+        AVG(CAST(fg_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
+        AVG(CAST(fg3_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
+        AVG(CAST(ft_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
     FROM TeamGames
     WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
@@ -189,6 +195,7 @@ SELECT
     g.team_id_away,
     g.team_abbreviation_away,
     g.wl_home,
+    ha.win_pct AS home_win_pct,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
     ha.avg_ast AS home_avg_ast,
@@ -197,6 +204,7 @@ SELECT
     ha.avg_fg_pct AS home_avg_fg_pct,
     ha.avg_fg3_pct AS home_avg_fg3_pct,
     ha.avg_ft_pct AS home_avg_ft_pct,
+    aa.win_pct AS away_win_pct,
     aa.avg_pts AS away_avg_pts,
     aa.avg_reb AS away_avg_reb,
     aa.avg_ast AS away_avg_ast,
@@ -233,14 +241,15 @@ TeamAverages AS (
         game_id,
         team,
         season_id,
+        AVG(CAST(win as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS win_pct,
         AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_pts,
         AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_reb,
         AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ast,
         AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_stl,
         AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
+        AVG(CAST(fg_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
+        AVG(CAST(fg3_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
+        AVG(CAST(ft_pct as FLOAT)) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
     FROM TeamGames
     WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
@@ -253,6 +262,7 @@ SELECT
     g.team_id_away,
     g.team_abbreviation_away,
     g.wl_home,
+    ha.win_pct AS home_win_pct,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
     ha.avg_ast AS home_avg_ast,
@@ -261,6 +271,7 @@ SELECT
     ha.avg_fg_pct AS home_avg_fg_pct,
     ha.avg_fg3_pct AS home_avg_fg3_pct,
     ha.avg_ft_pct AS home_avg_ft_pct,
+    aa.win_pct AS away_win_pct,
     aa.avg_pts AS away_avg_pts,
     aa.avg_reb AS away_avg_reb,
     aa.avg_ast AS away_avg_ast,
@@ -297,14 +308,51 @@ TeamAverages AS (
         game_id,
         team,
         season_id,
-        AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_pts,
-        AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_reb,
-        AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_ast,
-        AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_stl,
-        AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_ft_pct
+        AVG(CAST(win as FLOAT)) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS win_pct,
+        AVG(pts) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_pts,
+        AVG(reb) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_reb,
+        AVG(ast) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_ast,
+        AVG(stl) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_stl,
+        AVG(blk) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_blk,
+        AVG(CAST(fg_pct as FLOAT)) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_fg_pct,
+        AVG(CAST(fg3_pct as FLOAT)) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_fg3_pct,
+        AVG(CAST(ft_pct as FLOAT)) OVER (
+            PARTITION BY team, season_id 
+            ORDER BY date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS avg_ft_pct
     FROM TeamGames
     WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
@@ -317,6 +365,7 @@ SELECT
     g.team_id_away,
     g.team_abbreviation_away,
     g.wl_home,
+    ha.win_pct AS home_win_pct,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
     ha.avg_ast AS home_avg_ast,
@@ -325,6 +374,7 @@ SELECT
     ha.avg_fg_pct AS home_avg_fg_pct,
     ha.avg_fg3_pct AS home_avg_fg3_pct,
     ha.avg_ft_pct AS home_avg_ft_pct,
+    aa.win_pct AS away_win_pct,
     aa.avg_pts AS away_avg_pts,
     aa.avg_reb AS away_avg_reb,
     aa.avg_ast AS away_avg_ast,

@@ -1,3 +1,11 @@
+import sys
+import os
+from pathlib import Path
+
+# Add parent directory to Python path
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
+
 import pandas as pd
 import numpy as np
 import joblib
@@ -107,7 +115,7 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
             continue
             
         # Prepare features for prediction
-        features = engineer_features(game_stats.copy())
+        features = game_stats.copy()
         features = features.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
         
         # Get model prediction
@@ -268,13 +276,9 @@ if __name__ == "__main__":
     # Define test parameters
     test_params = [
         {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly With Threshold'},
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.05, 'test_name': '5% kelly With Threshold'},
         {'max_bet_percentage': 0.01, 'use_thresholds': False, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly No Threshold'},
-        {'max_bet_percentage': 0.3, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly, 30% max bet With Threshold'},
-        {'max_bet_percentage': 0.3, 'use_thresholds': False, 'min_kelly_threshold': 0.08, 
-         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly, 30% max bet No Threshold'},
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.05, 'test_name': '5% kelly No Threshold'},
     ]
     
     results = []

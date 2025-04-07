@@ -32,12 +32,21 @@ def load_data(filepaths, basic_features_only=False):
     
     Parameters:
     -----------
+    filepaths : dict
+        Dictionary mapping window names to file paths
+        e.g. {'season': 'path/to/season.csv', '5_game': 'path/to/5game.csv'}
+    basic_features_only : bool
+        Whether to use only basic features or engineer additional features
     """
     dfs = {}
     
-    # Load each window's data
+    # Load and engineer features for each window's data separately
     for window_name, filepath in filepaths.items():
         df = pd.read_csv(filepath)
+        
+        if not basic_features_only:
+            # Engineer features for each window separately
+            df = engineer_features(df)
         
         # Add window prefix to all columns except those that should remain unchanged
         unchanged_cols = ['target', 'team_abbreviation_home', 'team_abbreviation_away', 
@@ -50,45 +59,30 @@ def load_data(filepaths, basic_features_only=False):
         
         df = df.rename(columns=rename_cols)
         dfs[window_name] = df
+
+    # Start with the first dataframe
+    first_window = list(filepaths.keys())[0]
+    df = dfs[first_window].copy()
     
-    # Merge all dataframes on the common columns
-    df = dfs['season'].copy()  # Start with season window data
+    # Merge with remaining windows
     merge_cols = ['game_id', 'date', 'team_id_home', 'team_id_away', 
                  'team_abbreviation_home', 'team_abbreviation_away', 
                  'season', 'wl_home']
     
-    # Merge with other windows
-    for window_name in ['3_game', '5_game', '10_game']:
+    remaining_windows = list(filepaths.keys())[1:]
+    for window_name in remaining_windows:
         df = df.merge(dfs[window_name], on=merge_cols, suffixes=('', f'_{window_name}'))
 
     # Convert win/loss to binary
     df['target'] = (df['wl_home'] == 'W').astype(int)
     
-    # Basic features (season averages)
-    base_features = [
-        'home_avg_pts', 'home_avg_reb', 'home_avg_ast', 'home_avg_stl', 
-        'home_avg_blk', 'home_avg_fg_pct', 'home_avg_fg3_pct', 'home_avg_ft_pct',
-        'away_avg_pts', 'away_avg_reb', 'away_avg_ast', 'away_avg_stl',
-        'away_avg_blk', 'away_avg_fg_pct', 'away_avg_fg3_pct', 'away_avg_ft_pct'
-    ]
-    
-    #convert date to datetime
+    # Convert date to datetime
     df['date'] = pd.to_datetime(df['date'])
     
-    # defining train dataset - use data before 2021 season start (Dec 22, 2020)
+    # Split into train/val/test datasets
     train_data = df[df['date'] < '2020-12-22']
-    
-    # defining val dataset - 2021 season (Dec 22, 2020 - end of season)
     val_data = df[(df['date'] >= '2020-12-22') & (df['date'] < '2021-10-01')]
-    
-    # defining test dataset - after 2021 season
     test_data = df[df['date'] >= '2021-10-01']
-
-    if not basic_features_only:
-        # Engineer new features for each dataset separately
-        train_data = engineer_features(train_data)
-        val_data = engineer_features(val_data)
-        test_data = engineer_features(test_data)
     
     # Drop rows with missing values
     train_data = train_data.dropna(subset=train_data.columns.tolist())
@@ -96,11 +90,13 @@ def load_data(filepaths, basic_features_only=False):
     test_data = test_data.dropna(subset=test_data.columns.tolist())
 
     # Create feature matrix and target vector
-    X_train = train_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    drop_cols = ['target', 'team_abbreviation_home', 'team_abbreviation_away', 
+                'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home']
+    X_train = train_data.drop(columns=drop_cols)
     y_train = train_data['target']
-    X_val = val_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    X_val = val_data.drop(columns=drop_cols)
     y_val = val_data['target']
-    X_test = test_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    X_test = test_data.drop(columns=drop_cols)
     y_test = test_data['target']
 
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
@@ -324,10 +320,10 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
         #'XGBoost': None,  # Will be set after tuning
         'FFN_Small': FFNClassifier(X_train.shape[1], [64, 32]),
         'FFN_Medium': FFNClassifier(X_train.shape[1], [128, 64, 32]),
-        'FFN_Large': FFNClassifier(X_train.shape[1], [256, 128, 64, 32]),
-        'ResFFN_Small': ResFFNClassifier(X_train.shape[1], [64, 32]),
-        'ResFFN_Medium': ResFFNClassifier(X_train.shape[1], [128, 64, 32]),
-        'ResFFN_Large': ResFFNClassifier(X_train.shape[1], [256, 128, 64, 32])
+        'FFN_Large': FFNClassifier(X_train.shape[1], [256, 128, 64, 32])
+        #'ResFFN_Small': ResFFNClassifier(X_train.shape[1], [64, 32]),
+        #'ResFFN_Medium': ResFFNClassifier(X_train.shape[1], [128, 64, 32]),
+        #'ResFFN_Large': ResFFNClassifier(X_train.shape[1], [256, 128, 64, 32])
     }
     
     '''
@@ -490,9 +486,9 @@ def main():
     base_path = os.path.dirname(os.path.abspath(__file__))
     data_path = {
         'season': os.path.join(base_path, 'team_game_stats_season.csv'),
-        '3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
+        #'3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
         '5_game': os.path.join(base_path, 'team_game_stats_5game.csv'),
-        '10_game': os.path.join(base_path, 'team_game_stats_10game.csv')
+        #'10_game': os.path.join(base_path, 'team_game_stats_10game.csv')
     }
     X_train, y_train, X_val, y_val, X_test, y_test, test_data = load_data(data_path, basic_features_only=False)
     
