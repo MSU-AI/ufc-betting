@@ -1,0 +1,12 @@
+Backtesting Results:
+Total Bets: 3729
+Winning Bets: 1530
+Win Rate: 41.03%
+Total Profit: $1137167.68
+ROI: 113716.77%
+Final Bankroll: $1138167.68
+Max Bankroll: $1508341.20
+Min Bankroll: $1000.00
+Max Drawdown: 99.93%
+Skipped Games: 88
+Skipped Percentage: 2.14%

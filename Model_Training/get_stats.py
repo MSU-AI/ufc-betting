@@ -12,6 +12,17 @@ cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
 tables = cur.fetchall()
 print("Available tables:", tables)
 
+
+print("Player table schema:")
+# Get schema of the Player table
+cur.execute("PRAGMA table_info(Player)")
+schema = cur.fetchall()
+
+for column in schema:
+    print(f"Column: {column[1]}, Type: {column[2]}")
+
+
+print("Game table schema:")
 # Get schema of the Game table
 cur.execute("PRAGMA table_info(Game)")
 schema = cur.fetchall()
@@ -29,7 +40,7 @@ create_view_query = """
 CREATE VIEW TeamGames AS
 SELECT 
     game_id,
-    season_id as season,
+    season_id,
     game_date as date,
     team_id_home AS team,
     'home' AS location,
@@ -54,7 +65,7 @@ FROM game
 UNION ALL
 SELECT 
     game_id,
-    season_id as season,
+    season_id,
     game_date as date,
     team_id_away AS team,
     'away' AS location,
@@ -84,15 +95,17 @@ WITH TeamAverages AS (
     SELECT 
         game_id,
         team,
-        AVG(pts) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_pts,
-        AVG(reb) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_reb,
-        AVG(ast) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ast,
-        AVG(stl) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_stl,
-        AVG(blk) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
+        season_id,
+        AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_pts,
+        AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_reb,
+        AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ast,
+        AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_stl,
+        AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_blk,
+        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
+        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
+        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
     FROM TeamGames
+    WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
 SELECT 
     g.game_id,
@@ -122,7 +135,7 @@ LEFT JOIN TeamAverages ha
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28'
+WHERE g.game_date >= '2019-10-28' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
@@ -131,15 +144,17 @@ WITH TeamAverages AS (
     SELECT 
         game_id,
         team,
-        AVG(pts) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_pts,
-        AVG(reb) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_reb,
-        AVG(ast) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ast,
-        AVG(stl) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_stl,
-        AVG(blk) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
+        season_id,
+        AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_pts,
+        AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_reb,
+        AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ast,
+        AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_stl,
+        AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_blk,
+        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
+        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
+        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
     FROM TeamGames
+    WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
 SELECT 
     g.game_id,
@@ -169,7 +184,7 @@ LEFT JOIN TeamAverages ha
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28'
+WHERE g.game_date >= '2019-10-28' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
@@ -178,15 +193,17 @@ WITH TeamAverages AS (
     SELECT 
         game_id,
         team,
-        AVG(pts) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_pts,
-        AVG(reb) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_reb,
-        AVG(ast) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ast,
-        AVG(stl) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_stl,
-        AVG(blk) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
+        season_id,
+        AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_pts,
+        AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_reb,
+        AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ast,
+        AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_stl,
+        AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_blk,
+        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg_pct,
+        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_fg3_pct,
+        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS avg_ft_pct
     FROM TeamGames
+    WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
 SELECT 
     g.game_id,
@@ -216,31 +233,44 @@ LEFT JOIN TeamAverages ha
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28'
+WHERE g.game_date >= '2019-10-28' AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
 create_season_query = """
-WITH TeamAverages AS (
+WITH SeasonDates AS (
+    SELECT 
+        season_id,
+        MIN(game_date) as season_start,
+        MAX(game_date) as season_end
+    FROM game 
+    WHERE game_date >= '2015-10-27'
+    GROUP BY season_id
+),
+TeamAverages AS (
     SELECT 
         game_id,
         team,
-        AVG(pts) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_pts,
-        AVG(reb) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_reb,
-        AVG(ast) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_ast,
-        AVG(stl) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_stl,
-        AVG(blk) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_blk,
-        AVG(fg_pct) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_fg_pct,
-        AVG(fg3_pct) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_fg3_pct,
-        AVG(ft_pct) OVER (PARTITION BY team, season ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_ft_pct
+        season_id,
+        AVG(pts) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_pts,
+        AVG(reb) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_reb,
+        AVG(ast) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_ast,
+        AVG(stl) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_stl,
+        AVG(blk) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_blk,
+        AVG(fg_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_fg_pct,
+        AVG(fg3_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_fg3_pct,
+        AVG(ft_pct) OVER (PARTITION BY team, season_id ORDER BY date ROWS UNBOUNDED PRECEDING) AS avg_ft_pct
     FROM TeamGames
+    WHERE date >= '2015-10-27' AND (date < '2020-03-11' OR date > '2020-10-11')
 )
 SELECT 
     g.game_id,
     g.game_date as date,
     g.season_id as season,
     g.team_id_home,
+    g.team_abbreviation_home,
     g.team_id_away,
+    g.team_abbreviation_away,
     g.wl_home,
     ha.avg_pts AS home_avg_pts,
     ha.avg_reb AS home_avg_reb,
@@ -259,11 +289,15 @@ SELECT
     aa.avg_fg3_pct AS away_avg_fg3_pct,
     aa.avg_ft_pct AS away_avg_ft_pct
 FROM game as g
+JOIN SeasonDates sd ON g.season_id = sd.season_id
 LEFT JOIN TeamAverages ha 
     ON g.game_id = ha.game_id AND ha.team = g.team_id_home
 LEFT JOIN TeamAverages aa 
     ON g.game_id = aa.game_id AND aa.team = g.team_id_away
-WHERE g.game_date >= '2019-10-28'
+WHERE g.game_date >= sd.season_start
+    AND g.game_date <= sd.season_end
+    AND g.game_date >= '2015-10-27' 
+    AND (g.game_date < '2020-03-11' OR g.game_date > '2020-10-11')
 ORDER BY g.game_date;
 """
 
