@@ -292,9 +292,6 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
         'FFN_Small': FFNClassifier(X_train.shape[1], [64, 32]),
         'FFN_Medium': FFNClassifier(X_train.shape[1], [128, 64, 32]),
         'FFN_Large': FFNClassifier(X_train.shape[1], [256, 128, 64, 32]),
-        'ResFFN_Small': ResFFNClassifier(X_train.shape[1], [64, 32]),
-        'ResFFN_Medium': ResFFNClassifier(X_train.shape[1], [128, 64, 32]),
-        'ResFFN_Large': ResFFNClassifier(X_train.shape[1], [256, 128, 64, 32])
     }
     
     '''
