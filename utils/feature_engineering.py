@@ -51,24 +51,6 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
             'home_winpct_last_{}'.format(window),
             'away_winpct_last_{}'.format(window)
         ])
-        
-        # Create momentum features (trend in performance)
-        df['home_momentum_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['home_avg_pts'].transform(
-            lambda x: x.shift(1).rolling(window=window, min_periods=1).apply(
-                lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0
-            )
-        )
-        
-        df['away_momentum_{}'.format(window)] = df.groupby(['team_id_away', 'season'])['away_avg_pts'].transform(
-            lambda x: x.shift(1).rolling(window=window, min_periods=1).apply(
-                lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0
-            )
-        )
-        
-        rolling_features.extend([
-            'home_momentum_{}'.format(window),
-            'away_momentum_{}'.format(window)
-        ])
     
     return rolling_features
 
