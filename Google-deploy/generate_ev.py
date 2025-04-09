@@ -99,6 +99,8 @@ def calculate_kelly(p_model: float, odds: int) -> float:
     b = decimal_odds - 1
     q = 1 - p_model
     kelly = (b * p_model - q) / b if b != 0 else 0
+    kelly *= 0.02  # Multiply kelly by const
+
     return round(kelly, 4)  # Neg kelly means to take the other side
 
 
