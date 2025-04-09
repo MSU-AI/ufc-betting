@@ -6,38 +6,11 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
     """Create rolling window features for recent performance."""
     # Sort by date to ensure correct rolling calculations
     df['date'] = pd.to_datetime(df['date'])
-    
-    # Base stats to create rolling features for
-    base_stats = {
-        'pts': ['home_avg_pts', 'away_avg_pts'],
-        'reb': ['home_avg_reb', 'away_avg_reb'],
-        'ast': ['home_avg_ast', 'away_avg_ast'],
-        'fg_pct': ['home_avg_fg_pct', 'away_avg_fg_pct'],
-        'fg3_pct': ['home_avg_fg3_pct', 'away_avg_fg3_pct']
-    }
+
     
     rolling_features = []
     
     for window in window_sizes:
-        for stat, (home_col, away_col) in base_stats.items():
-            # Create home team rolling features
-            home_roll_col = f'home_{stat}_last_{window}'
-            df[home_roll_col] = df.groupby(['team_id_home', 'season'])[home_col].transform(
-                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-            )
-            
-            # Create away team rolling features
-            away_roll_col = f'away_{stat}_last_{window}'
-            df[away_roll_col] = df.groupby(['team_id_away', 'season'])[away_col].transform(
-                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-            )
-            
-            # Create differential features
-            diff_col = f'{stat}_diff_last_{window}'
-            df[diff_col] = df[home_roll_col] - df[away_roll_col]
-            
-            rolling_features.extend([home_roll_col, away_roll_col, diff_col])
-            
         # Create rolling win percentage features using shifted target
         df['home_winpct_last_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['target'].transform(
             lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
