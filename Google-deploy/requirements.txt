@@ -10,4 +10,5 @@ python-dotenv==1.1.0
 Requests==2.32.3
 scikit-learn==1.6.1
 selenium
+torch
 xgboost==3.0.0

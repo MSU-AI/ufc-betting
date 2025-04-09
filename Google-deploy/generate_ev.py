@@ -156,11 +156,15 @@ def run_inference_pipeline(model) -> list:
                     away_odds = odds[away_team]
 
                     # Calculate EV for each bet
-                    home_ev = calc_expected_val(home_team, home_odds, home_win_prob)
-                    away_ev = calc_expected_val(away_team, away_odds, away_win_prob)
+                    home_ev = calc_expected_val(
+                        home_team, home_odds, float(home_win_prob)
+                    )
+                    away_ev = calc_expected_val(
+                        away_team, away_odds, float(away_win_prob)
+                    )
 
-                    home_kelly = calculate_kelly(home_win_prob, home_odds)
-                    away_kelly = calculate_kelly(away_win_prob, away_odds)
+                    home_kelly = calculate_kelly(float(home_win_prob), home_odds)
+                    away_kelly = calculate_kelly(float(away_win_prob), away_odds)
 
                     bookmaker_result = {
                         "bookmaker": bookmaker,

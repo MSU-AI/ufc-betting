@@ -4,6 +4,7 @@ from flask import Flask, jsonify
 import joblib
 from results_insert import insert_results
 from generate_ev import run_inference_pipeline
+from model import FFNClassifier
 
 
 def create_app():
