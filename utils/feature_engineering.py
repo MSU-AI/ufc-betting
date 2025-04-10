@@ -6,78 +6,23 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
     """Create rolling window features for recent performance."""
     # Sort by date to ensure correct rolling calculations
     df['date'] = pd.to_datetime(df['date'])
-    
-    # Base stats to create rolling features for
-    base_stats = {
-        'pts': ['home_avg_pts', 'away_avg_pts'],
-        'reb': ['home_avg_reb', 'away_avg_reb'],
-        'ast': ['home_avg_ast', 'away_avg_ast'],
-        'fg_pct': ['home_avg_fg_pct', 'away_avg_fg_pct'],
-        'fg3_pct': ['home_avg_fg3_pct', 'away_avg_fg3_pct']
-    }
+
     
     rolling_features = []
     
     for window in window_sizes:
-        for stat, (home_col, away_col) in base_stats.items():
-            # Create home team rolling features
-            home_roll_col = f'home_{stat}_last_{window}'
-            df[home_roll_col] = df.groupby(['team_id_home', 'season'])[home_col].transform(
-                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-            )
-            
-            # Create away team rolling features
-            away_roll_col = f'away_{stat}_last_{window}'
-            df[away_roll_col] = df.groupby(['team_id_away', 'season'])[away_col].transform(
-                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-            )
-            
-            # Create differential features
-            diff_col = f'{stat}_diff_last_{window}'
-            df[diff_col] = df[home_roll_col] - df[away_roll_col]
-            
-            rolling_features.extend([home_roll_col, away_roll_col, diff_col])
-            
-        # Create rolling win percentage features using both home and away games
-        df['home_winpct_last_{}'.format(window)] = df.groupby(['team_id_home', 'season']).apply(
-            lambda x: pd.concat([
-                # When team was home
-                x.groupby(['team_id_home'])['wl_home'].shift(1).rolling(window=window, min_periods=1),
-                # When team was away
-                df[df['team_id_away'] == x.name[0]].groupby(['team_id_away'])['wl_away'].shift(1).rolling(window=window, min_periods=1)
-            ]).mean()
-        ).reset_index(level=0, drop=True)
+        # Create rolling win percentage features using shifted target
+        df['home_winpct_last_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['target'].transform(
+            lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
+        )
         
-        df['away_winpct_last_{}'.format(window)] = df.groupby(['team_id_away', 'season']).apply(
-            lambda x: pd.concat([
-                # When team was home
-                df[df['team_id_home'] == x.name[0]].groupby(['team_id_home'])['wl_home'].shift(1).rolling(window=window, min_periods=1),
-                # When team was away
-                x.groupby(['team_id_away'])['wl_away'].shift(1).rolling(window=window, min_periods=1)
-            ]).mean()
-        ).reset_index(level=0, drop=True)
+        df['away_winpct_last_{}'.format(window)] = df.groupby(['team_id_away', 'season'])['target'].transform(
+            lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
+        )
         
         rolling_features.extend([
             'home_winpct_last_{}'.format(window),
             'away_winpct_last_{}'.format(window)
-        ])
-        
-        # Create momentum features (trend in performance)
-        df['home_momentum_{}'.format(window)] = df.groupby(['team_id_home', 'season'])['home_avg_pts'].transform(
-            lambda x: x.shift(1).rolling(window=window, min_periods=1).apply(
-                lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0
-            )
-        )
-        
-        df['away_momentum_{}'.format(window)] = df.groupby(['team_id_away', 'season'])['away_avg_pts'].transform(
-            lambda x: x.shift(1).rolling(window=window, min_periods=1).apply(
-                lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0
-            )
-        )
-        
-        rolling_features.extend([
-            'home_momentum_{}'.format(window),
-            'away_momentum_{}'.format(window)
         ])
     
     return rolling_features

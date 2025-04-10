@@ -26,6 +26,7 @@ from datetime import datetime
 import optuna
 from optuna.integration import XGBoostPruningCallback
 from temperature_scaling import ModelWithTemperature
+from sklearn.feature_selection import RFE
 
 def load_data(filepaths, basic_features_only=False):
     """
@@ -280,31 +281,24 @@ def objective(trial, X_train, y_train, X_val, y_val):
         'reg_alpha': trial.suggest_float('reg_alpha', 1e-8, 1.0, log=True),
         'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 1.0, log=True),
         'random_state': 42,
+        'use_label_encoder': False,
         'eval_metric': 'logloss'
     }
     
-    # Create pruning callback
-    pruning_callback = XGBoostPruningCallback(trial, 'validation_0-logloss')
-    
-    # Create DMatrix objects for XGBoost training
-    dtrain = xgb.DMatrix(X_train, label=y_train)
-    dval = xgb.DMatrix(X_val, label=y_val)
-    
-    # Use train method instead of fit
-    model = xgb.train(
-        param,
-        dtrain,
-        num_boost_round=param['n_estimators'],
-        evals=[(dval, 'validation_0')],
-        callbacks=[pruning_callback],
-        verbose_eval=False
+    # Create and train model using sklearn API
+    model = xgb.XGBClassifier(**param)
+    model.fit(
+        X_train, 
+        y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=False
     )
     
-    # Evaluate model
-    y_val_pred = model.predict(dval)
-    score = log_loss(y_val, y_val_pred)
+    # Get validation score
+    val_pred = model.predict_proba(X_val)[:, 1]
+    val_score = log_loss(y_val, val_pred)
     
-    return score
+    return val_score
 
 def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     # Remove scaling since features are already scaled
@@ -315,11 +309,10 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
     # Initialize models
     models = {
         'Logistic Regression': LogisticRegression(random_state=42),
-        #'FFN_Small': FFNClassifier(X_train.shape[1], [256, 128, 64]),
-        #'FFN_Medium': FFNClassifier(X_train.shape[1], [512, 256, 128, 64]),
-        #'FFN_Large': FFNClassifier(X_train.shape[1], [512, 256, 256, 256]),
-        #'FFN_Wide': FFNClassifier(X_train.shape[1], [1024, 512, 512]),
-        'FFN_Large_Wide': FFNClassifier(X_train.shape[1], [2048, 1024, 1024, 1024]),
+        #'XGBoost': None,  # Will be set after tuning
+        'FFN_Small': FFNClassifier(X_train.shape[1], [64, 32]),
+        'FFN_Medium': FFNClassifier(X_train.shape[1], [128, 64, 32]),
+        'FFN_Large': FFNClassifier(X_train.shape[1], [256, 128, 64, 32]),
     }
     
     '''
@@ -372,16 +365,16 @@ def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
         print(f"\nTraining {name}...")
         
         if isinstance(model, FFNClassifier) or isinstance(model, ResFFNClassifier):
-            # Train and calibrate neural network
+            # Train neural network
             model = train_neural_net(model, X_train_scaled, y_train, X_val_scaled, y_val)
+            # Add neural network to calibrated_models
             calibrated_models[name] = model
-            
-            # Get predictions using calibrated model
+            # Get predictions
             model.eval()
             with torch.no_grad():
                 X_test_tensor = torch.FloatTensor(X_test_scaled.to_numpy())
-                # Use predict_proba method which properly handles probability calculation
-                y_pred_proba = model.predict_proba(X_test_tensor)[:, 1]
+                # Take only the probability for class 1 (index 1)
+                y_pred_proba = model(X_test_tensor, return_probas=True).numpy()[:, 1]
         else:
             # Handle XGBoost model differently than other models
             if name == 'XGBoost':
@@ -513,9 +506,9 @@ def main():
     # Load data
     base_path = os.path.dirname(os.path.abspath(__file__))
     data_path = {
-        'season': os.path.join(base_path, 'team_game_stats_season.csv'),
-        '3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
-        '5_game': os.path.join(base_path, 'team_game_stats_5game.csv'),
+        #'season': os.path.join(base_path, 'team_game_stats_season.csv'),
+        #'3_game': os.path.join(base_path, 'team_game_stats_3game.csv'),
+        #'5_game': os.path.join(base_path, 'team_game_stats_5game.csv'),
         '10_game': os.path.join(base_path, 'team_game_stats_10game.csv')
     }
     X_train, y_train, X_val, y_val, X_test, y_test, test_data = load_data(data_path, basic_features_only=False)
