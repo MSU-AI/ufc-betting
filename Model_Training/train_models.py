@@ -24,6 +24,7 @@ from datetime import datetime
 import os
 import optuna
 from optuna.integration import XGBoostPruningCallback
+from utils.scaling import fit_scaler, transform_features
 
 def load_data(filepath, basic_features_only=False):
     df = pd.read_csv(filepath)
@@ -52,7 +53,7 @@ def load_data(filepath, basic_features_only=False):
     test_data = df[df['date'] >= '2021-10-01']
 
     if not basic_features_only:
-        # Engineer new features for each dataset separately
+        # Engineer features for each dataset
         train_data = engineer_features(train_data)
         val_data = engineer_features(val_data)
         test_data = engineer_features(test_data)
@@ -61,14 +62,23 @@ def load_data(filepath, basic_features_only=False):
     train_data = train_data.dropna(subset=train_data.columns.tolist())
     val_data = val_data.dropna(subset=val_data.columns.tolist())
     test_data = test_data.dropna(subset=test_data.columns.tolist())
+    
+    # First fit the scaler on training data and save it
+    scaler_path = 'model_scaler.joblib'
+    scaler = fit_scaler(train_data, scaler_path)
+    
+    # Then transform all datasets using the fitted scaler
+    train_data_scaled = transform_features(train_data, scaler)
+    val_data_scaled = transform_features(val_data, scaler)
+    test_data_scaled = transform_features(test_data, scaler)
 
     # Create feature matrix and target vector
-    X_train = train_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y_train = train_data['target']
-    X_val = val_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y_val = val_data['target']
-    X_test = test_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y_test = test_data['target']
+    X_train = train_data_scaled.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_train = train_data_scaled['target']
+    X_val = val_data_scaled.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_val = val_data_scaled['target']
+    X_test = test_data_scaled.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_test = test_data_scaled['target']
 
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
     print(f"Number of features: {len(X_train.columns)}")
@@ -91,7 +101,9 @@ class FFNClassifier(nn.Module):
             ])
             prev_dim = hidden_dim
             
+        # Change final layer to output 1 value instead of 2
         layers.append(nn.Linear(prev_dim, 1))
+        # Use Sigmoid instead of Softmax
         layers.append(nn.Sigmoid())
         
         self.network = nn.Sequential(*layers)
@@ -113,22 +125,18 @@ class FFNClassifier(nn.Module):
         array-like of shape (n_samples, 2)
             Returns predicted probabilities for both classes [P(y=0), P(y=1)]
         """
-        #convert X to numpy array
         X = X.to_numpy()
         
-        # Convert input to tensor if not already
         if not isinstance(X, torch.Tensor):
             X = torch.FloatTensor(X)
             
-        # Set model to evaluation mode
         self.eval()
         
-        # Get predictions
         with torch.no_grad():
+            # Get probabilities from sigmoid
             probas = self.forward(X).numpy()
-        
-        # Return probabilities for both classes [P(y=0), P(y=1)]
-        return np.column_stack([1 - probas, probas])
+            # Return probabilities for both classes
+            return np.column_stack([1 - probas, probas])
 
 class ResidualBlock(nn.Module):
     def __init__(self, input_dim, hidden_dim):
@@ -193,19 +201,19 @@ class ResFFNClassifier(nn.Module):
 def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
     # Convert DataFrames to numpy arrays first, then to PyTorch tensors
     X_train = torch.FloatTensor(X_train.to_numpy())
-    y_train = torch.FloatTensor(y_train.values).reshape(-1, 1)
+    # Convert labels to float tensor for BCELoss
+    y_train = torch.FloatTensor(y_train.values)
     X_val = torch.FloatTensor(X_val.to_numpy())
-    y_val = torch.FloatTensor(y_val.values).reshape(-1, 1)
+    y_val = torch.FloatTensor(y_val.values)
     
     # Create data loaders
     train_dataset = TensorDataset(X_train, y_train)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     
-    # Loss and optimizer
+    # Use BCELoss instead of CrossEntropyLoss
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
-    # Training loop
     best_val_loss = float('inf')
     best_state = None
     patience = 10
@@ -216,7 +224,7 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
             outputs = model(batch_X)
-            loss = criterion(outputs, batch_y)
+            loss = criterion(outputs.squeeze(), batch_y)
             loss.backward()
             optimizer.step()
         
@@ -224,7 +232,7 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
         model.eval()
         with torch.no_grad():
             val_outputs = model(X_val)
-            val_loss = criterion(val_outputs, y_val)
+            val_loss = criterion(val_outputs.squeeze(), y_val)
             
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -237,7 +245,6 @@ def train_neural_net(model, X_train, y_train, X_val, y_val, epochs=100, batch_si
                 print(f"Early stopping at epoch {epoch}")
                 break
     
-    # Load best model state
     model.load_state_dict(best_state)
     return model
 
@@ -280,7 +287,7 @@ def objective(trial, X_train, y_train, X_val, y_val):
     return score
 
 def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
-    # Remove scaling since features are already scaled
+    # Remove the scaling section since data is already scaled
     X_train_scaled = X_train
     X_val_scaled = X_val
     X_test_scaled = X_test
@@ -479,9 +486,17 @@ def main():
     save_model_metrics(best_model_name, best_auc_score)
     
     # Save best model
-    best_model = calibrated_models['Logistic Regression']
+    best_model = calibrated_models[best_model_name]
     joblib.dump(best_model, 'best_model.joblib')
     print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
+    
+    #save best model info to best_model_desc.txt
+    with open('best_model_desc.txt', 'w') as w:
+        w.write(f"Best model: {best_model_name}\n")
+        w.write(f"AUC score: {best_auc_score}\n")
+        w.write(f"Brier score: {results[best_model_name]['brier_score']}\n")
+        w.write(f"Log loss: {results[best_model_name]['log_loss']}\n")
+        w.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     #save test data
     current_dir = os.path.dirname(os.path.abspath(__file__))

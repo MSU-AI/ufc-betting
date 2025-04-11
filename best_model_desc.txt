@@ -1,4 +1,5 @@
-FFN_Medium:
-Brier Score: 0.186
-AUC Score: 0.79
-Log Loss: 0.550
+Best model: FFN_Medium
+AUC score: 0.7127840916580329
+Brier score: 0.2123417316825197
+Log loss: 0.6106787190632487
+Timestamp: 2025-04-11 01:52:10
