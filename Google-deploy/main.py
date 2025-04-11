@@ -10,10 +10,13 @@ from model import FFNClassifier
 def create_app():
     app = Flask(__name__)
 
-    # Load the model once at startup
+    # Load the model and scaler
     model_path = os.path.join(os.path.dirname(__file__), "best_model.joblib")
+    scaler_path = os.path.join(os.path.dirname(__file__), "model_scaler.joblib")
+
     try:
         app.model = joblib.load(model_path)
+        app.scaler = joblib.load(scaler_path)
         print("Model loaded successfully")
     except Exception as e:
         print(f"Model load failed: {e}")
@@ -26,7 +29,7 @@ def create_app():
     @app.route("/inference", methods=["POST"])
     def inference():
         try:
-            results = run_inference_pipeline(app.model)
+            results = run_inference_pipeline(app.model, app.scaler)
             insert_results(results)
             return jsonify(results)
         except Exception as e:

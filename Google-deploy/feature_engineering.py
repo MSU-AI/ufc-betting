@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 
 
 def create_rolling_features(df, window_sizes=[3, 5, 10]):
@@ -8,41 +7,9 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
     # Sort by date to ensure correct rolling calculations
     df["date"] = pd.to_datetime(df["date"])
 
-    # Base stats to create rolling features for
-    base_stats = {
-        "pts": ["home_avg_pts", "away_avg_pts"],
-        "reb": ["home_avg_reb", "away_avg_reb"],
-        "ast": ["home_avg_ast", "away_avg_ast"],
-        "fg_pct": ["home_avg_fg_pct", "away_avg_fg_pct"],
-        "fg3_pct": ["home_avg_fg3_pct", "away_avg_fg3_pct"],
-    }
-
     rolling_features = []
 
     for window in window_sizes:
-        for stat, (home_col, away_col) in base_stats.items():
-            # Create home team rolling features
-            home_roll_col = f"home_{stat}_last_{window}"
-            df[home_roll_col] = df.groupby(["team_id_home", "season"])[
-                home_col
-            ].transform(
-                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-            )
-
-            # Create away team rolling features
-            away_roll_col = f"away_{stat}_last_{window}"
-            df[away_roll_col] = df.groupby(["team_id_away", "season"])[
-                away_col
-            ].transform(
-                lambda x: x.shift(1).rolling(window=window, min_periods=1).mean()
-            )
-
-            # Create differential features
-            diff_col = f"{stat}_diff_last_{window}"
-            df[diff_col] = df[home_roll_col] - df[away_roll_col]
-
-            rolling_features.extend([home_roll_col, away_roll_col, diff_col])
-
         # Create rolling win percentage features using shifted target
         df["home_winpct_last_{}".format(window)] = df.groupby(
             ["team_id_home", "season"]
@@ -58,27 +25,6 @@ def create_rolling_features(df, window_sizes=[3, 5, 10]):
 
         rolling_features.extend(
             ["home_winpct_last_{}".format(window), "away_winpct_last_{}".format(window)]
-        )
-
-        # Create momentum features (trend in performance)
-        df["home_momentum_{}".format(window)] = df.groupby(["team_id_home", "season"])[
-            "home_avg_pts"
-        ].transform(
-            lambda x: x.shift(1)
-            .rolling(window=window, min_periods=1)
-            .apply(lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0)
-        )
-
-        df["away_momentum_{}".format(window)] = df.groupby(["team_id_away", "season"])[
-            "away_avg_pts"
-        ].transform(
-            lambda x: x.shift(1)
-            .rolling(window=window, min_periods=1)
-            .apply(lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) > 1 else 0)
-        )
-
-        rolling_features.extend(
-            ["home_momentum_{}".format(window), "away_momentum_{}".format(window)]
         )
 
     return rolling_features
@@ -221,36 +167,11 @@ def create_composite_metrics(df):
         + df["away_def_rating"] * 0.3
     )
 
-    df["performance_diff"] = df["home_performance"] - df["away_performance"]
 
-    return [
-        "home_def_rating",
-        "away_def_rating",
-        "def_rating_diff",
-        "home_performance",
-        "away_performance",
-        "performance_diff",
-    ]
-
-
-def scale_features(df):
-    """Scale numerical features using StandardScaler."""
-    # Identify columns to scale (exclude non-numeric and target columns)
-    cols_to_scale = df.select_dtypes(include=["float64", "int64"]).columns
-    cols_to_scale = [col for col in cols_to_scale if col != "target"]
-
-    # Initialize scaler
-    scaler = StandardScaler()
-
-    # Scale features
-    df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
-
-    return df
-
-
-def engineer_features(df):
+def engineer_features(df, include_rolling=True):
     """Main function to engineer all features."""
-    create_rolling_features(df)
+    if include_rolling:
+        create_rolling_features(df)
     create_offensive_ratings(df)
     create_efficiency_differences(df)
     create_basic_differentials(df)
@@ -261,10 +182,7 @@ def engineer_features(df):
     create_performance_differentials(df)
     create_composite_metrics(df)
 
-    # Fill NA with 0 before scaling
+    # Fill NA with 0 before returning
     df = df.fillna(0)
-
-    # Scale features as final step
-    df = scale_features(df)
 
     return df
