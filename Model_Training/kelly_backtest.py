@@ -1,3 +1,8 @@
+#add utils folder to python path
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
 import numpy as np
 import joblib
@@ -81,6 +86,10 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     #remove games from odds_df that before the first game in stats_df
     odds_df = odds_df[odds_df['date'] >= stats_df['date'].min()]
     
+    # Engineer features for the entire stats dataset at once
+    print("Engineering features for entire dataset...")
+    stats_df_with_features = engineer_features(stats_df.copy())
+    
     # Process each game
     print("\nStarting game-by-game analysis...")
     for idx, game in enumerate(odds_df.iterrows(), 1):
@@ -106,13 +115,18 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
             print(f"Skipping game {idx} - No matching stats found for Date: {game['date']}, Team: {game['team']}, Opponent: {game['opponent']}")
             continue
             
-        # Prepare features for prediction
-        features = engineer_features(game_stats.copy())
-        features = features.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+        # Instead of engineering features for each game, just get the pre-engineered features
+        features = stats_df_with_features.loc[game_stats.index]
+        features = features.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 
+                                       'game_id', 'date', 'team_id_home', 'team_id_away', 
+                                       'season', 'wl_home'])
         
         # Get model prediction
         home_win_prob = model.predict_proba(features)[0][1]
-        away_win_prob = 1 - home_win_prob  # Away team's probability is complement of home
+        away_win_prob = 1 - home_win_prob
+        
+        print(f"Home win probability: {home_win_prob}")
+        print(f"Away win probability: {away_win_prob}")
         
         # Calculate confidence metrics (how far from random 0.5 probability)
         home_confidence = abs(home_win_prob - 0.5) * 2  # Scale to 0-1 range
@@ -267,6 +281,8 @@ if __name__ == "__main__":
     
     # Define test parameters
     test_params = [
+        {'max_bet_percentage': 0.015, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
+         'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1.5% max With Threshold'},
         {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly With Threshold'},
         {'max_bet_percentage': 0.01, 'use_thresholds': False, 'min_kelly_threshold': 0.08, 
