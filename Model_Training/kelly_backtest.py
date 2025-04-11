@@ -281,7 +281,7 @@ if __name__ == "__main__":
     
     # Define test parameters
     test_params = [
-        {'max_bet_percentage': 0.015, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
+        {'max_bet_percentage': 0.0155, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1.5% max With Threshold'},
         {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly With Threshold'},

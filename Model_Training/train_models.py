@@ -479,7 +479,7 @@ def main():
     save_model_metrics(best_model_name, best_auc_score)
     
     # Save best model
-    best_model = calibrated_models['Logistic Regression']
+    best_model = calibrated_models[best_model_name]
     joblib.dump(best_model, 'best_model.joblib')
     print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
     
