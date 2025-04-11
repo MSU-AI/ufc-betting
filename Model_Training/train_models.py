@@ -24,6 +24,7 @@ from datetime import datetime
 import os
 import optuna
 from optuna.integration import XGBoostPruningCallback
+from utils.scaling import fit_scaler, transform_features
 
 def load_data(filepath, basic_features_only=False):
     df = pd.read_csv(filepath)
@@ -52,7 +53,7 @@ def load_data(filepath, basic_features_only=False):
     test_data = df[df['date'] >= '2021-10-01']
 
     if not basic_features_only:
-        # Engineer new features for each dataset separately
+        # Engineer features for each dataset
         train_data = engineer_features(train_data)
         val_data = engineer_features(val_data)
         test_data = engineer_features(test_data)
@@ -61,14 +62,23 @@ def load_data(filepath, basic_features_only=False):
     train_data = train_data.dropna(subset=train_data.columns.tolist())
     val_data = val_data.dropna(subset=val_data.columns.tolist())
     test_data = test_data.dropna(subset=test_data.columns.tolist())
+    
+    # First fit the scaler on training data and save it
+    scaler_path = 'model_scaler.joblib'
+    scaler = fit_scaler(train_data, scaler_path)
+    
+    # Then transform all datasets using the fitted scaler
+    train_data_scaled = transform_features(train_data, scaler)
+    val_data_scaled = transform_features(val_data, scaler)
+    test_data_scaled = transform_features(test_data, scaler)
 
     # Create feature matrix and target vector
-    X_train = train_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y_train = train_data['target']
-    X_val = val_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y_val = val_data['target']
-    X_test = test_data.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
-    y_test = test_data['target']
+    X_train = train_data_scaled.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_train = train_data_scaled['target']
+    X_val = val_data_scaled.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_val = val_data_scaled['target']
+    X_test = test_data_scaled.drop(columns=['target', 'team_abbreviation_home', 'team_abbreviation_away', 'game_id', 'date', 'team_id_home', 'team_id_away', 'season', 'wl_home'])
+    y_test = test_data_scaled['target']
 
     print(f"\nUsing {'basic' if basic_features_only else 'all'} features:")
     print(f"Number of features: {len(X_train.columns)}")
@@ -277,7 +287,7 @@ def objective(trial, X_train, y_train, X_val, y_val):
     return score
 
 def train_evaluate_models(X_train, y_train, X_val, y_val, X_test, y_test):
-    # Remove scaling since features are already scaled
+    # Remove the scaling section since data is already scaled
     X_train_scaled = X_train
     X_val_scaled = X_val
     X_test_scaled = X_test

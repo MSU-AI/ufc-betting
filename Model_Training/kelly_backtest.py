@@ -56,6 +56,9 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     # Load model and data
     print(f"Loading model from {model_path}")
     model = joblib.load(model_path)
+    #print model description
+    with open('best_model_desc.txt', 'r') as f:
+        print(f.read())
     print("Loading odds and stats data...")
     odds_df = pd.read_csv(odds_data_path)
     stats_df = pd.read_csv(stats_data_path)
@@ -281,7 +284,7 @@ if __name__ == "__main__":
     
     # Define test parameters
     test_params = [
-        {'max_bet_percentage': 0.0155, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
+        {'max_bet_percentage': 0.015, 'use_thresholds': True, 'min_kelly_threshold': 0.1, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1.5% max With Threshold'},
         {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly With Threshold'},
