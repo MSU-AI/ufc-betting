@@ -1,4 +1,3 @@
-// src/app/articles/page.tsx
 import Articles from "@/components/Articles";
 import { articleData } from "@/components/ArticleData";
 

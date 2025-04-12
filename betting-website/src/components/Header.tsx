@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Menu } from "lucide-react";
-
+import Link from "next/link";
 
 export default function Header() {
   return (
@@ -22,7 +22,9 @@ export default function Header() {
       style={{ letterSpacing: "0.25em" }}
     >
       <div className="flex items-center gap-2">
-        <span className="text-6xl font-bold">Iverson</span>
+          <Link href="/?tab=Today" className="text-6xl font-bold">
+            Iverson
+          </Link>
       </div>
       <button className="flex items-center justify-center p-2 hover:bg-opacity-80 rounded">
         <Menu className="h-11 w-11" />

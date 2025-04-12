@@ -1,6 +1,8 @@
-def convert_team_name(full_name):
+# param use_bkn: Flag to tell function to use correct codes for certain teams
+# Like BKN for Nets instead of BRK
+def convert_team_name(full_name, use_bkn=False):
     """Convert full team name to team acronym."""
-    
+
     # Dictionary mapping various team name formats to their acronyms
     team_name_mapping = {
         # Full names to acronyms
@@ -34,7 +36,6 @@ def convert_team_name(full_name):
         "Toronto Raptors": "TOR",
         "Utah Jazz": "UTA",
         "Washington Wizards": "WAS",
-        
         # Common variations
         "Nets": "BRK",
         "Hornets": "CHO",
@@ -49,21 +50,33 @@ def convert_team_name(full_name):
         "Suns": "PHO",
         "Trail Blazers": "POR",
         "Blazers": "POR",
-        "Spurs": "SAS"
+        "Spurs": "SAS",
+        "Magic": "ORL",
     }
-    
+
+    # The correct abbreviations for these teams, not from Basketball Reference
+    if use_bkn:
+        team_name_mapping["Brooklyn Nets"] = "BKN"
+        team_name_mapping["Nets"] = "BKN"
+        team_name_mapping["Phoenix Suns"] = "PHX"
+        team_name_mapping["Suns"] = "PHX"
+        team_name_mapping["Charlotte Hornets"] = "CHA"
+        team_name_mapping["Hornets"] = "CHA"
+
     try:
         # First try direct lookup
         if full_name in team_name_mapping:
             return team_name_mapping[full_name]
-        
+
         # Try case-insensitive lookup
         full_name_lower = full_name.lower()
-        return next(v for k, v in team_name_mapping.items() 
-                   if k.lower() == full_name_lower)
-            
+        return next(
+            v for k, v in team_name_mapping.items() if k.lower() == full_name_lower
+        )
+
     except (KeyError, StopIteration):
         raise ValueError(f"Could not convert team name: {full_name}")
+
 
 # Example usage
 if __name__ == "__main__":
@@ -73,9 +86,9 @@ if __name__ == "__main__":
         "Golden State Warriors",
         "Warriors",
         "LA Lakers",
-        "76ers"
+        "76ers",
     ]
-    
+
     for name in test_names:
         try:
             acronym = convert_team_name(name)
