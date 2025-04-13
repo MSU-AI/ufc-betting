@@ -448,13 +448,51 @@ def save_model_metrics(best_model_name, best_auc_score):
     with open('model_performance.json', 'w') as w:
         json.dump(metrics, w, indent=4)
 
-def save_model(calibrated_model, feature_names):
-    """Save calibrated model and feature names using joblib"""
-    model_data = {
-        'model': calibrated_model,
-        'feature_names': feature_names
+def save_neural_network_model(model, model_name):
+    """Save neural network model architecture and weights"""
+    # Extract model architecture by inspecting the network layers
+    architecture = []
+    input_dim = None
+    
+    # Get input dimension from first linear layer
+    for layer in model.network:
+        if isinstance(layer, nn.Linear):
+            if input_dim is None:
+                input_dim = layer.in_features
+            # Only add hidden layer dimensions (exclude final output layer)
+            if layer.out_features != 1:
+                architecture.append(layer.out_features)
+    
+    # Save model architecture info
+    model_info = {
+        'input_dim': input_dim,
+        'architecture': architecture,
+        'state_dict': model.state_dict(),
     }
-    joblib.dump(model_data, 'calibrated_model.joblib')
+    
+    # Save the model info using torch.save
+    torch.save(model_info, 'best_model_nn.pt')
+    
+    # Save a human-readable description of the architecture
+    with open('best_model_architecture.txt', 'w') as f:
+        f.write("Model type: FFNClassifier\n")
+        f.write(f"Input dimension: {input_dim}\n")
+        f.write(f"Hidden layer dimensions: {architecture}\n")
+        f.write("Activation: ReLU\n")
+        f.write("Additional layers: BatchNorm1d, Dropout(0.5)\n")
+        f.write("Output: Single sigmoid unit\n")
+
+def load_neural_network_model(model_path):
+    """Load neural network model from saved state"""
+    model_info = torch.load(model_path)
+    
+    # Create new model with saved architecture
+    model = FFNClassifier(model_info['input_dim'], model_info['architecture'])
+    
+    # Load the saved weights
+    model.load_state_dict(model_info['state_dict'])
+    
+    return model
 
 def main():
     # Load data
@@ -487,16 +525,27 @@ def main():
     
     # Save best model
     best_model = calibrated_models[best_model_name]
-    joblib.dump(best_model, 'best_model.joblib')
-    print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
     
-    #save best model info to best_model_desc.txt
+    # Handle saving differently based on model type
+    if isinstance(best_model, FFNClassifier):
+        save_neural_network_model(best_model, best_model_name)
+        print(f"\nSaved best neural network model ({best_model_name}) to best_model_nn.pt")
+    else:
+        joblib.dump(best_model, 'best_model.joblib')
+        print(f"\nSaved best model ({best_model_name}) to best_model.joblib")
+    
+    # Save best model info
     with open('best_model_desc.txt', 'w') as w:
         w.write(f"Best model: {best_model_name}\n")
         w.write(f"AUC score: {best_auc_score}\n")
         w.write(f"Brier score: {results[best_model_name]['brier_score']}\n")
         w.write(f"Log loss: {results[best_model_name]['log_loss']}\n")
         w.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        
+        # Add additional info for neural network models
+        if isinstance(best_model, FFNClassifier):
+            w.write(f"Model weights saved in: best_model_nn.pt\n")
+            w.write(f"Model architecture details in: best_model_architecture.txt\n")
     
     #save test data
     current_dir = os.path.dirname(os.path.abspath(__file__))
