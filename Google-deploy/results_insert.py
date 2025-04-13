@@ -102,8 +102,8 @@ def insert_results(results: List[Dict]):
                 "away_kelly": away_kelly,
             }
 
-            time_window_start = commence_time - timedelta(hours=2)
-            time_window_end = commence_time + timedelta(hours=2)
+            time_window_start = commence_time - timedelta(hours=6)
+            time_window_end = commence_time + timedelta(hours=6)
 
             existing_game = collection.find_one(
                 {
@@ -120,7 +120,7 @@ def insert_results(results: List[Dict]):
             if existing_game:
                 print("Existing game found!")
                 filter_criteria = {"_id": existing_game["_id"]}
-                game_result["commence_time"] = existing_game["commence_time"]
+                # game_result["commence_time"] = existing_game["commence_time"] -- Uncomment to preserve old game time
             else:
                 filter_criteria = {
                     "home_code": home_code,

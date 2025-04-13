@@ -58,3 +58,16 @@ class FFNClassifier(nn.Module):
 
         # Return probabilities for both classes [P(y=0), P(y=1)]
         return np.column_stack([1 - probas, probas])
+
+
+def load_neural_network_model(model_path):
+    """Load neural network model from saved state"""
+    model_info = torch.load(model_path)
+
+    # Create new model with saved architecture
+    model = FFNClassifier(model_info["input_dim"], model_info["architecture"])
+
+    # Load the saved weights
+    model.load_state_dict(model_info["state_dict"])
+
+    return model
