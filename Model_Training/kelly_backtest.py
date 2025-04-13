@@ -8,12 +8,14 @@ import numpy as np
 import joblib
 import warnings
 from utils.feature_engineering import engineer_features
+from utils.scaling import transform_features
 from datetime import datetime
 from team_name_converter import convert_team_name
 import json
 from train_models import FFNClassifier
 from train_models import ResFFNClassifier
 from train_models import ResidualBlock
+from train_models import load_neural_network_model
 import os
 
 
@@ -55,7 +57,7 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     
     # Load model and data
     print(f"Loading model from {model_path}")
-    model = joblib.load(model_path)
+    model = load_neural_network_model(model_path)
     #print model description
     with open('best_model_desc.txt', 'r') as f:
         print(f.read())
@@ -92,6 +94,10 @@ def backtest_kelly(model_path, odds_data_path, stats_data_path, max_bet_percenta
     # Engineer features for the entire stats dataset at once
     print("Engineering features for entire dataset...")
     stats_df_with_features = engineer_features(stats_df.copy())
+    
+    #scale stats_df_with_features
+    scaler = joblib.load('model_scaler.joblib')
+    stats_df_with_features = transform_features(stats_df_with_features, scaler)
     
     # Process each game
     print("\nStarting game-by-game analysis...")
@@ -284,7 +290,7 @@ if __name__ == "__main__":
     
     # Define test parameters
     test_params = [
-        {'max_bet_percentage': 0.015, 'use_thresholds': True, 'min_kelly_threshold': 0.1, 
+        {'max_bet_percentage': 0.0152, 'use_thresholds': True, 'min_kelly_threshold': 0.1, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1.5% max With Threshold'},
         {'max_bet_percentage': 0.01, 'use_thresholds': True, 'min_kelly_threshold': 0.08, 
          'min_ev_threshold': 0.12, 'kelly_fraction_multiplier': 0.01, 'test_name': '1% kelly With Threshold'},
@@ -337,7 +343,7 @@ if __name__ == "__main__":
                 continue
         
         results_data = backtest_kelly(
-            model_path='best_model.joblib',
+            model_path='best_model_nn.pt',
             odds_data_path='Model_Training/processed_odds_data.csv',
             stats_data_path='Model_Training/test_data.csv',
             **params

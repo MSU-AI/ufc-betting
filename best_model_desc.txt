@@ -1,5 +1,7 @@
 Best model: FFN_Medium
-AUC score: 0.7127840916580329
-Brier score: 0.2123417316825197
-Log loss: 0.6106787190632487
-Timestamp: 2025-04-11 01:52:10
+AUC score: 0.7151541034949107
+Brier score: 0.2114039507994243
+Log loss: 0.6082436128176831
+Timestamp: 2025-04-12 22:27:08
+Model weights saved in: best_model_nn.pt
+Model architecture details in: best_model_architecture.txt
