@@ -1,0 +1,6 @@
+Model type: FFNClassifier
+Input dimension: 50
+Hidden layer dimensions: [128, 64, 32]
+Activation: ReLU
+Additional layers: BatchNorm1d, Dropout(0.5)
+Output: Single sigmoid unit
