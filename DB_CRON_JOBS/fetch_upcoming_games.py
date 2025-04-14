@@ -1,0 +1,107 @@
+import logging
+import os
+import requests
+import pymongo
+#from dotenv import load_dotenv
+from datetime import datetime
+
+#load_dotenv(".env.local")
+
+# Logging config
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
+
+MONGODB_URI = os.getenv("MONGODB_URI")
+DB_NAME = "nba_stats"
+COLLECTION_NAME = "upcoming_games"
+NBA_SCHEDULE_URL = "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
+
+
+def connect_to_mongo():
+    """Connect to MongoDB"""
+    client = pymongo.MongoClient(MONGODB_URI)
+    db = client[DB_NAME]
+    return db[COLLECTION_NAME]
+
+
+def fetch_nba_schedule():
+    response = requests.get(NBA_SCHEDULE_URL)
+    if response.status_code != 200:
+        logging.error("Failed to fetch NBA schedule: %d", response.status_code)
+        return None
+    return response.json()
+
+
+NBA_TEAM_IDS = {
+    1610612737, 1610612738, 1610612739, 1610612740, 1610612741, 1610612742, 1610612743, 1610612744,
+    1610612745, 1610612746, 1610612747, 1610612748, 1610612749, 1610612750, 1610612751, 1610612752,
+    1610612753, 1610612754, 1610612755, 1610612756, 1610612757, 1610612758, 1610612759, 1610612760,
+    1610612761, 1610612762, 1610612763, 1610612764, 1610612765, 1610612766
+}
+
+
+def get_full_team_name(city, name):
+    """Normalize specific team names"""
+    if city == "LA" and name == "Clippers":
+        return "Los Angeles Clippers"
+    return f"{city} {name}"
+
+
+def extract_upcoming_games(data):
+    upcoming_games = []
+    today = datetime.utcnow().date()
+
+    if "leagueSchedule" in data and "gameDates" in data["leagueSchedule"]:
+        for game_date_entry in data["leagueSchedule"]["gameDates"]:
+            for game in game_date_entry.get("games", []):
+                try:
+                    game_date = datetime.strptime(game["gameDateUTC"], "%Y-%m-%dT%H:%M:%SZ").date()
+                    if game_date < today:
+                        continue
+
+                    home_team_id = game["homeTeam"]["teamId"]
+                    away_team_id = game["awayTeam"]["teamId"]
+
+                    if home_team_id not in NBA_TEAM_IDS or away_team_id not in NBA_TEAM_IDS:
+                        continue
+
+                    upcoming_games.append({
+                        "game_id": game["gameId"],
+                        "date": game_date.strftime("%Y-%m-%d"),
+                        "home_team": get_full_team_name(game['homeTeam']['teamCity'], game['homeTeam']['teamName']),
+                        "away_team": get_full_team_name(game['awayTeam']['teamCity'], game['awayTeam']['teamName']),
+                        "arena": game["arenaName"],
+                        "game_time": game["gameDateTimeUTC"]
+                    })
+                except KeyError as e:
+                    logging.warning("Missing key: %s", e)
+                except ValueError as e:
+                    logging.warning("Date parsing error: %s", e)
+
+    return upcoming_games
+
+
+def store_games_in_mongo(games):
+    collection = connect_to_mongo()
+    if not games:
+        logging.info("No upcoming games found.")
+        return
+    for game in games:
+        existing_game = collection.find_one({"game_id": game["game_id"]})
+        if existing_game:
+            if existing_game != game:
+                collection.update_one({"game_id": game["game_id"]}, {"$set": game})
+                logging.info("Updated game %s", game["game_id"])
+        else:
+            collection.insert_one(game)
+            logging.info("Inserted new game %s", game["game_id"])
+
+
+def main():
+    data = fetch_nba_schedule()
+    if data:
+        upcoming_games = extract_upcoming_games(data)
+        store_games_in_mongo(upcoming_games)
+
+
+if __name__ == "__main__":
+    main()

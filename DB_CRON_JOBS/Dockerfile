@@ -4,4 +4,4 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 ENV ENV_PATH=.env.local
-CMD ["python", "fetch_h2h_records.py"]
+CMD ["python", "run_all.py"]
