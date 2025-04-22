@@ -5,8 +5,7 @@ import json
 from pprint import pprint
 
 
-# MongoDB connection
-load_dotenv()
+load_dotenv(override=True)
 api_key = os.getenv("ODDS_API")
 # TODO: del later
 print("API key loaded")
